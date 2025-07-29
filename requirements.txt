@@ -1,0 +1,87 @@
+# Core LangGraph and LangChain
+langgraph
+langchain
+langchain-openai
+langchain-anthropic
+langchain-community
+langchain-core
+
+langchain-groq
+
+# Vector Database and Embeddings
+chromadb
+sentence-transformers
+# faiss-cpu
+
+# PDF Processing and OCR
+pypdf2
+pdfplumber
+# pytesseract
+# pillow
+pdf2image
+
+# Document Processing
+python-docx
+openpyxl
+beautifulsoup4
+markdown
+
+# Web Framework and API
+fastapi
+# uvicorn[standard]
+pydantic
+httpx
+
+# # Data Processing
+# numpy
+# pandas
+# matplotlib
+# seaborn
+
+# Environment and Configuration
+python-dotenv
+# pyyaml
+# toml
+
+# Database
+sqlalchemy
+alembic
+
+# Email and Communication
+email-validator
+jinja2
+
+# # Testing and Development
+# pytest
+# pytest-asyncio
+# pytest-mock
+# black
+# flake8
+# mypy
+ipython
+
+# # Monitoring and Logging
+# loguru
+# prometheus-client
+# structlog
+
+# # Security
+# cryptography
+# passlib
+# python-jose
+
+# # Utility Libraries
+# tqdm
+# rich
+# click
+# typing-extensions
+
+# # Optional: For production deployment
+# gunicorn
+# redis
+# celery
+
+# # Optional: For advanced features
+# opencv-python
+# transformers
+# torch

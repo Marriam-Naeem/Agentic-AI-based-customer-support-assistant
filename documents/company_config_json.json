@@ -1,0 +1,459 @@
+{
+  "company_info": {
+    "name": "TechCorp Solutions",
+    "founded": "2015",
+    "headquarters": "San Francisco, CA",
+    "website": "https://www.techcorp.com",
+    "support_email": "support@techcorp.com",
+    "phone": "1-800-TECHCORP",
+    "business_hours": {
+      "monday_friday": "8:00 AM - 8:00 PM EST",
+      "saturday": "9:00 AM - 6:00 PM EST",
+      "sunday": "12:00 PM - 6:00 PM EST"
+    },
+    "emergency_hotline": "1-800-TECH-911"
+  },
+  "product_catalog": {
+    "hardware": {
+      "laptops": {
+        "TechBook Pro 15": {
+          "price": 1299.99,
+          "warranty": "3 years",
+          "specifications": {
+            "processor": "Intel Core i7-13700H",
+            "memory": "16GB DDR5",
+            "storage": "512GB SSD",
+            "display": "15.6\" 4K OLED",
+            "graphics": "NVIDIA RTX 4060"
+          },
+          "common_issues": [
+            "Battery draining quickly - check power settings and background apps",
+            "Screen flickering - update graphics drivers or check display cable",
+            "Keyboard not responding - restart laptop or update keyboard drivers",
+            "Overheating - clean fans and check thermal paste"
+          ]
+        },
+        "TechBook Air 13": {
+          "price": 899.99,
+          "warranty": "2 years",
+          "specifications": {
+            "processor": "Apple M2",
+            "memory": "8GB Unified Memory",
+            "storage": "256GB SSD",
+            "display": "13.3\" Retina",
+            "graphics": "Integrated"
+          },
+          "common_issues": [
+            "Slow performance - check storage space and close unused applications",
+            "WiFi connectivity issues - reset network settings or update drivers",
+            "Trackpad not working - check System Preferences trackpad settings",
+            "USB ports not recognizing devices - check for debris and restart"
+          ]
+        }
+      },
+      "desktops": {
+        "TechStation Pro": {
+          "price": 1899.99,
+          "warranty": "3 years",
+          "specifications": {
+            "processor": "AMD Ryzen 9 7900X",
+            "memory": "32GB DDR5",
+            "storage": "1TB NVMe SSD + 2TB HDD",
+            "graphics": "NVIDIA RTX 4070",
+            "motherboard": "X670E Chipset"
+          },
+          "common_issues": [
+            "Computer won't start - check power connections and PSU",
+            "Blue screen errors - run memory test and check for driver conflicts",
+            "Slow boot times - disable unnecessary startup programs",
+            "Graphics issues - update GPU drivers and check monitor connections"
+          ]
+        }
+      },
+      "peripherals": {
+        "TechMouse Pro": {
+          "price": 79.99,
+          "warranty": "1 year",
+          "features": ["Wireless", "Ergonomic", "RGB Lighting", "Gaming Grade"],
+          "common_issues": [
+            "Mouse not connecting - check battery and re-pair Bluetooth",
+            "Cursor jumping - clean sensor and check for interference",
+            "Buttons not responding - update mouse drivers or check battery",
+            "RGB lighting not working - install manufacturer software"
+          ]
+        },
+        "TechKeyboard Mechanical": {
+          "price": 129.99,
+          "warranty": "2 years",
+          "features": ["Mechanical Switches", "Backlit", "USB-C", "Hot-swappable"],
+          "common_issues": [
+            "Keys not registering - check connection and clean switches",
+            "Backlight not working - check software settings and USB power",
+            "Some keys typing wrong characters - check language settings",
+            "Loud clicking noise - normal for mechanical switches, adjust settings"
+          ]
+        }
+      }
+    },
+    "software": {
+      "productivity": {
+        "TechOffice Suite": {
+          "price": 99.99,
+          "license_type": "Annual subscription",
+          "platforms": ["Windows", "macOS", "Linux", "Web"],
+          "features": [
+            "Word processor with advanced formatting",
+            "Spreadsheet with pivot tables and charts",
+            "Presentation software with templates",
+            "Email client with calendar integration",
+            "Cloud storage with 1TB space"
+          ],
+          "system_requirements": {
+            "minimum_ram": "4GB",
+            "disk_space": "2GB",
+            "operating_system": "Windows 10/macOS 10.15/Ubuntu 20.04 or later"
+          },
+          "common_issues": [
+            "Installation fails - check system requirements and admin privileges",
+            "License activation problems - verify internet connection and license key",
+            "Slow performance - close other applications and check available RAM",
+            "Files not saving - check disk space and file permissions",
+            "Sync issues - verify cloud storage account and internet connection"
+          ]
+        },
+        "TechDesign Pro": {
+          "price": 299.99,
+          "license_type": "Perpetual license",
+          "platforms": ["Windows", "macOS"],
+          "features": [
+            "Vector graphics editing",
+            "Photo manipulation and retouching",
+            "3D modeling and rendering",
+            "Animation and video editing",
+            "Plugin ecosystem support"
+          ],
+          "system_requirements": {
+            "minimum_ram": "16GB",
+            "disk_space": "10GB",
+            "graphics": "Dedicated GPU recommended",
+            "operating_system": "Windows 11/macOS 12.0 or later"
+          },
+          "common_issues": [
+            "Crashes during rendering - check GPU drivers and available memory",
+            "Import/export errors - verify file format compatibility",
+            "Plugins not loading - check plugin directory and permissions",
+            "Poor performance - adjust quality settings and close other apps",
+            "License server connection failed - check firewall and network settings"
+          ]
+        }
+      },
+      "security": {
+        "TechShield Antivirus": {
+          "price": 49.99,
+          "license_type": "Annual subscription",
+          "platforms": ["Windows", "macOS", "Android", "iOS"],
+          "features": [
+            "Real-time malware protection",
+            "Firewall and network monitoring",
+            "Identity theft protection",
+            "Secure VPN with 500MB daily limit",
+            "Password manager with encryption"
+          ],
+          "common_issues": [
+            "High CPU usage - adjust scan settings and schedule",
+            "False positive detections - add files to whitelist",
+            "VPN connection problems - check server status and try different location",
+            "Updates failing - check internet connection and storage space",
+            "Firewall blocking applications - configure application permissions"
+          ]
+        }
+      }
+    }
+  },
+  "frequently_asked_questions": {
+    "account_management": [
+      {
+        "question": "How do I reset my password?",
+        "answer": "To reset your password, go to the login page and click 'Forgot Password'. Enter your email address and check for a reset link. The link is valid for 24 hours. If you don't receive the email, check your spam folder or contact support.",
+        "category": "login",
+        "priority": "high",
+        "last_updated": "2024-01-15"
+      },
+      {
+        "question": "How do I change my email address?",
+        "answer": "Log into your account, go to Profile Settings, and click 'Change Email'. Enter your new email and verify it by clicking the link sent to the new address. The change takes effect immediately after verification.",
+        "category": "profile",
+        "priority": "medium",
+        "last_updated": "2024-01-10"
+      },
+      {
+        "question": "How do I enable two-factor authentication?",
+        "answer": "In your account Security Settings, click 'Enable 2FA'. Choose between SMS, authenticator app, or hardware key. Follow the setup instructions and save your backup codes in a secure location.",
+        "category": "security",
+        "priority": "high",
+        "last_updated": "2024-01-20"
+      },
+      {
+        "question": "Can I have multiple users on one account?",
+        "answer": "Business accounts support multiple users with different permission levels. Personal accounts are for single users only. Contact sales to upgrade to a business account for multi-user access.",
+        "category": "account_type",
+        "priority": "medium",
+        "last_updated": "2024-01-05"
+      }
+    ],
+    "billing_and_payments": [
+      {
+        "question": "What payment methods do you accept?",
+        "answer": "We accept all major credit cards (Visa, MasterCard, American Express, Discover), PayPal, bank transfers, and cryptocurrency (Bitcoin, Ethereum). Business accounts can also use purchase orders and invoicing.",
+        "category": "payment_methods",
+        "priority": "high",
+        "last_updated": "2024-01-18"
+      },
+      {
+        "question": "How do I update my payment information?",
+        "answer": "Go to Billing Settings in your account, click 'Payment Methods', and add or update your preferred payment method. You can set a primary method and keep backups for failed payments.",
+        "category": "payment_update",
+        "priority": "medium",
+        "last_updated": "2024-01-12"
+      },
+      {
+        "question": "When will I be charged for my subscription?",
+        "answer": "Subscriptions are charged on the same date each billing cycle. Monthly subscriptions charge monthly on your signup date, annual subscriptions charge yearly. You'll receive an email receipt after each payment.",
+        "category": "billing_cycle",
+        "priority": "medium",
+        "last_updated": "2024-01-08"
+      },
+      {
+        "question": "Can I get a refund if I'm not satisfied?",
+        "answer": "Yes, we offer a 30-day money-back guarantee for most products. Contact support within 30 days of purchase for a full refund. Some restrictions apply to custom software and digital downloads.",
+        "category": "refunds",
+        "priority": "high",
+        "last_updated": "2024-01-25"
+      }
+    ],
+    "technical_support": [
+      {
+        "question": "My software won't install. What should I do?",
+        "answer": "First, check system requirements and ensure you have administrator privileges. Temporarily disable antivirus software during installation. If it still fails, download a fresh installer or contact technical support.",
+        "category": "installation",
+        "priority": "high",
+        "last_updated": "2024-01-22"
+      },
+      {
+        "question": "How do I transfer my license to a new computer?",
+        "answer": "Deactivate the license on your old computer through the software's license manager. Install the software on your new computer and activate using the same license key. Contact support if you exceed activation limits.",
+        "category": "licensing",
+        "priority": "medium",
+        "last_updated": "2024-01-17"
+      },
+      {
+        "question": "The application crashes frequently. How can I fix this?",
+        "answer": "Update to the latest version, check for driver updates, and ensure adequate system resources. Run the application in compatibility mode if on Windows. Send crash logs to support for specific troubleshooting.",
+        "category": "crashes",
+        "priority": "high",
+        "last_updated": "2024-01-28"
+      },
+      {
+        "question": "How do I backup my data before updating?",
+        "answer": "Export your data using the built-in backup feature or manually copy files from the application data folder. Store backups in multiple locations including cloud storage. Test restore procedures regularly.",
+        "category": "backup",
+        "priority": "medium",
+        "last_updated": "2024-01-14"
+      }
+    ],
+    "shipping_and_delivery": [
+      {
+        "question": "How long does shipping take?",
+        "answer": "Standard shipping takes 5-7 business days, express takes 2-3 days, and overnight delivery is next business day by 12 PM. International shipping takes 10-21 business days depending on destination.",
+        "category": "delivery_times",
+        "priority": "high",
+        "last_updated": "2024-01-20"
+      },
+      {
+        "question": "Can I track my package?",
+        "answer": "Yes, tracking information is emailed within 24 hours of shipment. You can also track packages in your account under 'Order History'. Real-time GPS tracking is available for express shipments.",
+        "category": "tracking",
+        "priority": "medium",
+        "last_updated": "2024-01-16"
+      },
+      {
+        "question": "What if my package is damaged?",
+        "answer": "Take photos of the damaged package and contents immediately. Contact support within 48 hours with photos and tracking number. We'll arrange replacement or refund and handle the carrier claim.",
+        "category": "damaged_goods",
+        "priority": "high",
+        "last_updated": "2024-01-26"
+      },
+      {
+        "question": "Do you ship internationally?",
+        "answer": "Yes, we ship to over 150 countries. International shipping costs vary by destination and weight. Customers are responsible for customs duties and taxes. Some restrictions apply for certain products.",
+        "category": "international",
+        "priority": "medium",
+        "last_updated": "2024-01-11"
+      }
+    ]
+  },
+  "troubleshooting_guides": {
+    "network_connectivity": {
+      "wifi_issues": {
+        "symptoms": ["Slow internet", "Frequent disconnections", "Cannot connect to WiFi"],
+        "solutions": [
+          "Restart your router and modem by unplugging for 30 seconds",
+          "Check for interference from other devices (microwaves, baby monitors)",
+          "Update network adapter drivers on your computer",
+          "Change WiFi channel to avoid congestion (try channels 1, 6, or 11)",
+          "Reset network settings on your device",
+          "Contact ISP if problems persist across multiple devices"
+        ],
+        "difficulty": "easy",
+        "estimated_time": "15-30 minutes"
+      },
+      "ethernet_problems": {
+        "symptoms": ["No internet via cable", "Slow wired connection", "Cable not recognized"],
+        "solutions": [
+          "Check cable connections at both ends",
+          "Test with a different Ethernet cable",
+          "Verify network adapter is enabled in Device Manager",
+          "Update Ethernet adapter drivers",
+          "Check for damaged ports or cables",
+          "Test connection on different device to isolate issue"
+        ],
+        "difficulty": "easy",
+        "estimated_time": "10-20 minutes"
+      }
+    },
+    "software_problems": {
+      "installation_failures": {
+        "symptoms": ["Setup wizard crashes", "Installation stops", "Error messages during install"],
+        "solutions": [
+          "Run installer as administrator",
+          "Temporarily disable antivirus and firewall",
+          "Clear Windows Installer cache",
+          "Free up disk space (at least 10% of drive capacity)",
+          "Install Windows updates and restart",
+          "Download fresh installer from official website"
+        ],
+        "difficulty": "medium",
+        "estimated_time": "30-60 minutes"
+      },
+      "performance_issues": {
+        "symptoms": ["Slow application loading", "Frequent crashes", "High memory usage"],
+        "solutions": [
+          "Close unnecessary background applications",
+          "Increase virtual memory (page file) size",
+          "Update application to latest version",
+          "Check for malware and run system scan",
+          "Clean temporary files and registry entries",
+          "Consider hardware upgrade if system requirements not met"
+        ],
+        "difficulty": "medium",
+        "estimated_time": "45-90 minutes"
+      }
+    },
+    "hardware_diagnostics": {
+      "computer_wont_start": {
+        "symptoms": ["No power", "Fans spinning but no display", "Boot loop"],
+        "solutions": [
+          "Check power cable and outlet functionality",
+          "Verify power supply switch is ON",
+          "Reseat RAM modules and expansion cards",
+          "Clear CMOS battery to reset BIOS settings",
+          "Test with minimal hardware configuration",
+          "Check for POST beep codes and reference manual"
+        ],
+        "difficulty": "hard",
+        "estimated_time": "60-120 minutes"
+      },
+      "overheating_issues": {
+        "symptoms": ["Loud fan noise", "Sudden shutdowns", "Performance throttling"],
+        "solutions": [
+          "Clean dust from all fans and heat sinks",
+          "Check thermal paste on CPU and GPU",
+          "Verify all fans are spinning properly",
+          "Improve case airflow with additional fans",
+          "Monitor temperatures using hardware monitoring software",
+          "Reduce ambient room temperature if possible"
+        ],
+        "difficulty": "medium",
+        "estimated_time": "45-75 minutes"
+      }
+    }
+  },
+  "contact_information": {
+    "support_channels": {
+      "phone": {
+        "general_support": "1-800-TECHCORP",
+        "technical_support": "1-800-TECH-HELP",
+        "billing_support": "1-800-BILL-HELP",
+        "emergency_hotline": "1-800-TECH-911"
+      },
+      "email": {
+        "general_support": "support@techcorp.com",
+        "technical_support": "tech@techcorp.com",
+        "billing_support": "billing@techcorp.com",
+        "sales_inquiries": "sales@techcorp.com"
+      },
+      "online": {
+        "live_chat": "https://techcorp.com/chat",
+        "support_portal": "https://support.techcorp.com",
+        "community_forum": "https://community.techcorp.com",
+        "knowledge_base": "https://kb.techcorp.com"
+      }
+    },
+    "office_locations": [
+      {
+        "name": "Corporate Headquarters",
+        "address": "1234 Technology Boulevard, San Francisco, CA 94105",
+        "phone": "(415) 555-0100",
+        "email": "hq@techcorp.com",
+        "hours": "Monday-Friday 9:00 AM - 6:00 PM PST"
+      },
+      {
+        "name": "East Coast Office",
+        "address": "5678 Innovation Drive, New York, NY 10001",
+        "phone": "(212) 555-0200",
+        "email": "eastcoast@techcorp.com",
+        "hours": "Monday-Friday 9:00 AM - 6:00 PM EST"
+      },
+      {
+        "name": "European Office",
+        "address": "Tech Park Plaza, Dublin, Ireland",
+        "phone": "+353-1-555-0300",
+        "email": "europe@techcorp.com",
+        "hours": "Monday-Friday 9:00 AM - 5:00 PM GMT"
+      }
+    ]
+  },
+  "service_level_agreements": {
+    "response_times": {
+      "critical_issues": {
+        "description": "System down, data loss, security breach",
+        "phone_response": "15 minutes",
+        "email_response": "1 hour",
+        "resolution_target": "4 hours"
+      },
+      "high_priority": {
+        "description": "Major functionality impaired, multiple users affected",
+        "phone_response": "30 minutes",
+        "email_response": "4 hours",
+        "resolution_target": "24 hours"
+      },
+      "medium_priority": {
+        "description": "Minor functionality issues, single user affected",
+        "phone_response": "2 hours",
+        "email_response": "24 hours",
+        "resolution_target": "72 hours"
+      },
+      "low_priority": {
+        "description": "General questions, feature requests, documentation",
+        "phone_response": "4 hours",
+        "email_response": "48 hours",
+        "resolution_target": "1 week"
+      }
+    },
+    "availability_targets": {
+      "system_uptime": "99.9%",
+      "support_availability": "24/7 for critical issues",
+      "planned_maintenance": "Monthly 4-hour windows with 7-day notice"
+    }
+  }
+}
