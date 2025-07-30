@@ -397,5 +397,6 @@ RESPONSE REQUIREMENTS:
 - End with offer for further assistance
 - Keep response concise but comprehensive
 - Use friendly, professional tone
+- Do not mention what documents were searched or list search results
 
 Generate the final customer response:"""

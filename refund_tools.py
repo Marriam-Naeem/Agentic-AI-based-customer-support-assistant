@@ -30,6 +30,18 @@ class RefundProcessor:
         except:
             self.orders = self.refunds = {}
     
+    def _save_db(self):
+        """Save database to JSON file."""
+        try:
+            data = {
+                "orders": self.orders,
+                "processed_refunds": self.refunds
+            }
+            with open(self.db_path, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"Error saving database: {e}")
+    
     def verify_refund_eligibility(self, order_id: str, customer_email: str = None) -> Dict[str, Any]:
         """Verify if a refund request is eligible."""
         if order_id not in self.orders:
@@ -65,6 +77,9 @@ class RefundProcessor:
             "customer_email": order["customer_email"], "refund_id": refund_id,
             "processed_date": "2024-01-28", "status": "processed"
         }
+        
+        # Save the updated database
+        self._save_db()
         
         return {
             "success": True, "refund_id": refund_id, "amount": order["amount"],

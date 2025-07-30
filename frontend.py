@@ -72,12 +72,8 @@ class ChatbotInterface:
         if result.get("search_results"):
             search_results = result["search_results"]
             if search_results:
-                # Format search results as a response
-                response_parts = ["📚 **Information Found:**\n"]
-                for i, doc in enumerate(search_results[:3], 1):  # Limit to top 3 results
-                    content = doc.get("content", "")[:200] + "..." if len(doc.get("content", "")) > 200 else doc.get("content", "")
-                    response_parts.append(f"{i}. {content}\n")
-                return "\n".join(response_parts)
+                # Return the final response which should contain the synthesized answer
+                return result.get("final_response", "I found some information but couldn't format it properly. Please try asking your question again.")
         
         # Default response if nothing specific found
         query_type = result.get("query_type", "unknown")
@@ -191,7 +187,7 @@ def main():
         interface.launch(
             server_name="localhost",
             server_port=7860,
-            share=True,
+            share=False,
             debug=False
         )
     except Exception as e:

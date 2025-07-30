@@ -10,7 +10,7 @@
     },
     "67890": {
       "customer_email": "jane@example.com",
-      "amount": 15.50,
+      "amount": 15.5,
       "product": "Basic Service",
       "order_date": "2024-01-20",
       "status": "delivered",
@@ -49,5 +49,14 @@
       "refund_eligible": false
     }
   },
-  "processed_refunds": {}
-} 
+  "processed_refunds": {
+    "12345": {
+      "order_id": "12345",
+      "amount": 29.99,
+      "customer_email": "john@example.com",
+      "refund_id": "REF_12345_1",
+      "processed_date": "2024-01-28",
+      "status": "processed"
+    }
+  }
+}
