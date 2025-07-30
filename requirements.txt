@@ -1,87 +1,44 @@
-# Core LangGraph and LangChain
-langgraph
-langchain
-langchain-openai
-langchain-anthropic
-langchain-community
-langchain-core
+# Core LangChain and LangGraph
+langchain>=0.1.0
+langgraph>=0.0.40
+langchain-community>=0.0.20
+langchain-core>=0.1.0
+langchain-groq>=0.1.0
+langchain_chroma
+langchain_huggingface
 
-langchain-groq
-
-# Vector Database and Embeddings
-chromadb
-sentence-transformers
-# faiss-cpu
-
-# PDF Processing and OCR
-pypdf2
-pdfplumber
-# pytesseract
-# pillow
-pdf2image
+# Vector Store and Embeddings
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
 
 # Document Processing
-python-docx
-openpyxl
-beautifulsoup4
-markdown
+PyPDF2>=3.0.0
+pandas>=1.5.0
+python-docx>=0.8.11
+PyMuPDF
 
-# Web Framework and API
-fastapi
-# uvicorn[standard]
-pydantic
-httpx
+# API and Environment
+groq>=0.4.0
+python-dotenv>=1.0.0
+requests>=2.28.0
 
-# # Data Processing
-# numpy
-# pandas
-# matplotlib
-# seaborn
+# Utilities
+pydantic>=2.0.0
+typing-extensions>=4.5.0
 
-# Environment and Configuration
-python-dotenv
-# pyyaml
-# toml
+# Optional for advanced features
+faiss-cpu>=1.7.0  # Alternative to ChromaDB
+tiktoken>=0.5.0   # Token counting
+beautifulsoup4>=4.12.0  # HTML parsing if needed
 
-# Database
-sqlalchemy
-alembic
+# Development and testing
+pytest>=7.0.0
+jupyter>=1.0.0
+ipython>=8.0.0
 
-# Email and Communication
-email-validator
-jinja2
+# Graphics for workflow visualization
+graphviz>=0.20.0
+matplotlib>=3.5.0
 
-# # Testing and Development
-# pytest
-# pytest-asyncio
-# pytest-mock
-# black
-# flake8
-# mypy
-ipython
-
-# # Monitoring and Logging
-# loguru
-# prometheus-client
-# structlog
-
-# # Security
-# cryptography
-# passlib
-# python-jose
-
-# # Utility Libraries
-# tqdm
-# rich
-# click
-# typing-extensions
-
-# # Optional: For production deployment
-# gunicorn
-# redis
-# celery
-
-# # Optional: For advanced features
-# opencv-python
-# transformers
-# torch
+# Web Interface
+gradio>=4.0.0

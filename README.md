@@ -21,6 +21,8 @@ customerAssistant/
 │   ├── Shipping and Delivery Policy.pdf
 │   ├── support_tickets.csv
 │   └── Technical Support And TroubleShooting.pdf
+├── frontend.py                  # Gradio web interface
+├── run_frontend.py              # Frontend launcher script
 ├── graph.py                     # Main workflow definition
 ├── llm_setup.py                 # LLM model configuration
 ├── main.py                      # Application entry point
@@ -83,6 +85,18 @@ The system uses a `SupportState` object to track:
 
 ### Running the Application
 
+#### Option 1: Web Interface (Recommended)
+```bash
+# Run the Gradio frontend
+python run_frontend.py
+
+# Or directly
+python frontend.py
+```
+
+This will launch a web interface at `http://localhost:7860` where you can interact with the chatbot.
+
+#### Option 2: Command Line
 ```bash
 python main.py
 ```
@@ -94,6 +108,15 @@ python graph.py
 ```
 
 This will run the test workflow with sample customer queries and generate a workflow visualization.
+
+### Web Interface Features
+
+The Gradio frontend provides:
+- **Chat Interface**: Natural conversation with the AI assistant
+- **Real-time Processing**: Instant responses to customer queries
+- **Visual Feedback**: Clear indication of query types and processing status
+- **Example Queries**: Built-in examples to test different scenarios
+- **Error Handling**: Graceful error messages and recovery
 
 ### Example Queries
 
