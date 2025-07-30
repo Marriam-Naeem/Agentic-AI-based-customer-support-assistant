@@ -148,15 +148,4 @@ Important files:
 - `documents/`: Company documents and support guides
 - `data/`: Search database and document sections
 
-## 📈 Code Cleanup
-
-The code has been cleaned up to be easier to read and maintain:
-
-- **nodes.py**: Cut from 429 to 248 lines (42% smaller)
-- **graph.py**: Cut from 230 to 35 lines (85% smaller)
-- **llm_setup.py**: Cut from 159 to 58 lines (64% smaller)
-- **frontend.py**: Cut from 199 to 85 lines (57% smaller)
-
-Everything still works the same, but the code is much cleaner and easier to work with.
-
 **Built with LangGraph, LangChain, Groq AI, and modern AI tools**
