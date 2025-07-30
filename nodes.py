@@ -163,7 +163,9 @@ Customer Query: {state.get('user_message', '')}"""
                 state["last_llm_response"] = response
             else:
                 state["last_llm_response"] = None
-                state["final_response"] = response.content
+                # Clean up the response to remove thinking tags
+                cleaned_response = self._clean_response(response.content)
+                state["final_response"] = cleaned_response
                 state["resolved"] = True
             
         except Exception as e:
@@ -240,7 +242,9 @@ Customer Query: {state.get('user_message', '')}"""
             
             try:
                 response = self.issue_faq_llm.invoke(prompt)
-                state["final_response"] = response.content
+                # Clean up the response to remove thinking tags
+                cleaned_response = self._clean_response(response.content)
+                state["final_response"] = cleaned_response
                 state["resolved"] = True
                 return state
                 
@@ -398,5 +402,33 @@ RESPONSE REQUIREMENTS:
 - Keep response concise but comprehensive
 - Use friendly, professional tone
 - Do not mention what documents were searched or list search results
+- IMPORTANT: Do not include any thinking, reasoning, or internal thoughts in your response
+- Provide only the direct, helpful response to the customer
 
 Generate the final customer response:"""
+
+    def _clean_response(self, response: str) -> str:
+        """Clean up the response to remove thinking tags and internal reasoning."""
+        import re
+        
+        # Remove <think>...</think> tags and their content
+        response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
+        
+        # Remove other common thinking patterns
+        thinking_patterns = [
+            r'Okay, let\'s tackle.*?First, I need to.*?',
+            r'Let me think about.*?',
+            r'I need to analyze.*?',
+            r'Looking at this.*?',
+            r'Based on my analysis.*?',
+            r'Let me break this down.*?'
+        ]
+        
+        for pattern in thinking_patterns:
+            response = re.sub(pattern, '', response, flags=re.DOTALL | re.IGNORECASE)
+        
+        # Clean up extra whitespace and newlines
+        response = re.sub(r'\n\s*\n\s*\n', '\n\n', response)
+        response = response.strip()
+        
+        return response

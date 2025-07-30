@@ -8,8 +8,8 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable is required")
 
-SMALL_MODEL = os.getenv("SMALL_MODEL", "llama-3.1-8b-instant")
-LARGE_MODEL = os.getenv("LARGE_MODEL", "llama-3.3-70b-versatile")
+SMALL_MODEL = os.getenv("SMALL_MODEL")
+LARGE_MODEL = os.getenv("LARGE_MODEL")
 
 # RAG Config
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma_db")

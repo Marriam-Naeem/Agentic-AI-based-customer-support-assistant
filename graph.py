@@ -74,7 +74,7 @@ def non_refund_condition(state: SupportState) -> Literal["rag_tools", "__end__"]
     
     # If we have search results but no final response, continue processing in non_refund_node
     if search_results and not state.get("final_response"):
-        return "__end__"  # This will cause the non_refund_node to be called again
+        return "non_refund_node"  # Continue to non_refund_node to generate final response
     
     return "__end__"
 
