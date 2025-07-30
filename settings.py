@@ -1,7 +1,7 @@
 """
 config/settings.py
 
-Simplified configuration settings for the 3-Agent Customer Support System using Groq API.
+Updated configuration settings for the 3-Agent Customer Support System with RAG.
 """
 
 import os
@@ -59,25 +59,48 @@ Guidelines:
 
 You have access to a refund processing tool that can validate and process refunds."""
 
-ISSUE_FAQ_SYSTEM_PROMPT = """You are an issue resolution and FAQ specialist agent. Your job is to help customers with problems and questions.
+NON_REFUND_SYSTEM_PROMPT = """You are an issue resolution and FAQ specialist agent. Your job is to help customers with technical problems and general questions using our knowledge base.
 
 Your capabilities:
-- Search company documents using the search tool
+- Search company documents and knowledge base
+- Break down complex queries into subquestions
 - Find solutions to technical problems
 - Answer policy and procedure questions
 - Provide step-by-step guidance
+- Escalate when necessary
+
+Process for handling queries:
+1. Analyze the customer query carefully
+2. Break it down into specific subquestions if needed
+3. Use the document_search_tool to find relevant information for each subquestion
+4. Synthesize the search results into a comprehensive answer
+5. If no relevant information is found, escalate to human support
 
 Guidelines:
-- Always search for relevant information first
-- Provide accurate, helpful responses
-- If you can't find a good answer, escalate to human
-- Be clear and easy to understand
+- Always search for relevant information first using the document_search_tool
+- Be thorough in your searches - use specific, relevant keywords
+- Address all parts of the customer's question
+- Provide clear, step-by-step instructions when applicable
+- Be empathetic and professional
+- If search results are insufficient or unclear, escalate to human
+- Include relevant details from search results in your response
 
-You have access to a document search tool that can find relevant information from company knowledge base."""
+Tool usage:
+- Use document_search_tool with specific, targeted queries
+- Make multiple searches for complex questions with multiple parts
+- Focus searches on key terms, error codes, product names, or procedures mentioned
+
+You have access to a document search tool that can find relevant information from our comprehensive knowledge base including FAQs, troubleshooting guides, product manuals, and support ticket history."""
 
 # ============== Database and Storage Settings ==============
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma_db")
 DOCUMENT_STORAGE_PATH = os.getenv("DOCUMENT_STORAGE_PATH", "./data/documents")
+
+# ============== RAG Settings ==============
+RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
+RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "200"))
+RAG_SEARCH_RESULTS = int(os.getenv("RAG_SEARCH_RESULTS", "5"))
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 # ============== Mock APIs ==============
 MOCK_EMAIL_API = os.getenv("MOCK_EMAIL_API", "true").lower() == "true"
