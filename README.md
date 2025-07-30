@@ -22,10 +22,8 @@ customerAssistant/
 │   ├── support_tickets.csv
 │   └── Technical Support And TroubleShooting.pdf
 ├── frontend.py                  # Gradio web interface
-├── run_frontend.py              # Frontend launcher script
 ├── graph.py                     # Main workflow definition
 ├── llm_setup.py                 # LLM model configuration
-├── main.py                      # Application entry point
 ├── nodes.py                     # Workflow node implementations
 ├── pyproject.toml              # Project configuration
 ├── requirements.txt            # Python dependencies
@@ -88,18 +86,12 @@ The system uses a `SupportState` object to track:
 #### Option 1: Web Interface (Recommended)
 ```bash
 # Run the Gradio frontend
-python run_frontend.py
-
-# Or directly
 python frontend.py
 ```
 
 This will launch a web interface at `http://localhost:7860` where you can interact with the chatbot.
 
-#### Option 2: Command Line
-```bash
-python main.py
-```
+
 
 ### Testing the Workflow
 
