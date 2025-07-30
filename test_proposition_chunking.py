@@ -1,83 +1,64 @@
 #!/usr/bin/env python3
 """
-Test script for proposition-based chunking functionality.
+test_proposition_chunking.py
+
+Test script for the proposition-based chunking system.
 """
 
-import json
-from rag_tools import PropositionBasedChunker, test_rag_system
+from rag_tools import PropositionBasedChunker
 
-def test_proposition_extraction():
-    """Test proposition extraction with sample text."""
-    print("🧪 Testing Proposition Extraction")
-    print("=" * 40)
-    
-    # Sample text from a policy document
+def test_chunking():
+    """Test the proposition-based chunking system."""
+    # Sample text for testing
     sample_text = """
-    Our refund policy allows customers to return items within 30 days of purchase. 
-    The item must be in original condition with all packaging intact. 
-    Refunds will be processed within 5-7 business days after we receive the returned item. 
-    Shipping costs are non-refundable unless the item was defective or we made an error. 
-    Customers can initiate a return by logging into their account and selecting the return option, 
-    or by contacting our customer service team directly.
+    TechOffice Suite Installation Guide
+    
+    TechOffice Suite is a comprehensive office productivity software that includes word processing, 
+    spreadsheet, and presentation tools. To install TechOffice Suite, follow these steps:
+    
+    1. Download the installer from our official website
+    2. Run the installer as administrator
+    3. Accept the license agreement
+    4. Choose installation directory
+    5. Wait for installation to complete
+    
+    If you encounter error 1603 during installation, try these troubleshooting steps:
+    - Close all running applications
+    - Disable antivirus temporarily
+    - Run installer in compatibility mode
+    - Check system requirements
+    
+    System Requirements:
+    - Windows 10 or later
+    - 4GB RAM minimum
+    - 2GB free disk space
+    - Internet connection for activation
     """
     
-    # Create chunker without LLM (will use fallback)
+    # Initialize chunker
     chunker = PropositionBasedChunker()
     
-    print("📝 Sample text:")
-    print(sample_text.strip())
-    print()
-    
     # Extract propositions
-    print("🔍 Extracting propositions...")
     propositions = chunker.extract_propositions(sample_text)
     
-    print(f"✅ Extracted {len(propositions)} propositions:")
-    for i, prop in enumerate(propositions, 1):
-        print(f"  {i}. {prop}")
-    
-    print()
-    
-    # Group propositions
-    print("🔗 Grouping related propositions...")
+    # Group related propositions
     groups = chunker.group_related_propositions(propositions)
     
-    print(f"✅ Created {len(groups)} semantic groups:")
-    for i, group in enumerate(groups, 1):
-        print(f"  Group {i}:")
-        for j, prop in enumerate(group, 1):
-            print(f"    {j}. {prop}")
-        print()
-    
     # Create semantic chunks
-    print("📦 Creating semantic chunks...")
-    chunks = chunker.create_semantic_chunks(sample_text, "test_policy.txt", "txt")
+    chunks = chunker.create_semantic_chunks(sample_text, "test_doc.txt", "txt")
     
-    print(f"✅ Created {len(chunks)} semantic chunks:")
-    for i, chunk in enumerate(chunks, 1):
-        print(f"  Chunk {i}:")
-        print(f"    Type: {chunk['semantic_type']}")
-        print(f"    Propositions: {chunk['proposition_count']}")
-        print(f"    Content: {chunk['content'][:100]}...")
-        print()
-
-def test_with_llm():
-    """Test with LLM if available."""
+    # Test with LLM if available
     try:
-        from llm_setup import get_models
-        print("🤖 Testing with LLM...")
-        
-        models = get_models()
-        llm = models.get("issue_faq_llm")
-        
-        if llm:
-            test_rag_system(llm=llm)
-        else:
-            print("⚠️  No LLM available for testing")
-            
+        from llm_setup import llm_models
+        if llm_models:
+            llm = llm_models.get("issue_faq_llm")
+            if llm:
+                chunker_with_llm = PropositionBasedChunker(llm=llm)
+                llm_propositions = chunker_with_llm.extract_propositions(sample_text)
+                llm_groups = chunker_with_llm.group_related_propositions(llm_propositions)
+                llm_chunks = chunker_with_llm.create_semantic_chunks(sample_text, "test_doc.txt", "txt")
     except ImportError:
-        print("⚠️  llm_setup not available, skipping LLM test")
+        pass
 
 if __name__ == "__main__":
-    test_proposition_extraction()
-    test_with_llm() 
+    test_chunking() 

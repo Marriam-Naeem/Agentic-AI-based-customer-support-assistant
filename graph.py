@@ -41,7 +41,7 @@ def refund_condition(state: SupportState) -> Literal["refund_tools", "__end__"]:
     if state.get("final_response"):
         return "__end__"
     
-    if state.get("error") or state.get("tool_execution_error"):
+    if state.get("tool_execution_error"):
         return "__end__"
     
     if last_llm_response and hasattr(last_llm_response, 'tool_calls') and last_llm_response.tool_calls:
@@ -60,8 +60,8 @@ def non_refund_condition(state: SupportState) -> Literal["rag_tools", "__end__"]
     last_llm_response = state.get("last_llm_response")
     search_results = state.get("search_results", [])
     
-    # If we have a final response or error, end
-    if state.get("final_response") or state.get("error"):
+    # If we have a final response, end
+    if state.get("final_response"):
         return "__end__"
     
     # If escalation is required, end
@@ -149,14 +149,8 @@ def test_workflow():
             
             print(f"\nRESULT:")
             print(f"Query Type: {result.get('query_type')}")
-            print(f"Classification: {result.get('classification')}")
-            print(f"Current Agent: {result.get('current_agent')}")
-            print(f"Actions Taken: {result.get('actions_taken')}")
             print(f"Resolved: {result.get('resolved', False)}")
             print(f"Escalation Required: {result.get('escalation_required', False)}")
-            
-            if result.get('escalation_required'):
-                print(f"Escalation Reason: {result.get('escalation_reason', 'Not specified')}")
             
             if result.get('subquestions'):
                 print(f"Subquestions: {result.get('subquestions')}")
@@ -167,8 +161,8 @@ def test_workflow():
             if result.get('final_response'):
                 print(f"\nFinal Response:")
                 print(f"{result.get('final_response')}")
-            elif result.get('error'):
-                print(f"\nError: {result.get('error')}")
+            elif result.get('tool_execution_error'):
+                print(f"\nError: {result.get('tool_execution_error')}")
             elif result.get('verification_result'):
                 if result.get('processing_result'):
                     print(f"\nRefund Processed: {result.get('processing_result', {}).get('message', 'Refund completed')}")
@@ -215,7 +209,6 @@ def test_rag_functionality():
             
             print(f"Query Type: {result.get('query_type')}")
             print(f"Subquestions: {result.get('subquestions', [])}")
-            print(f"Search Queries: {result.get('search_queries', [])}")
             print(f"Documents Found: {len(result.get('search_results', []))}")
             print(f"Resolved: {result.get('resolved', False)}")
             print(f"Escalation: {result.get('escalation_required', False)}")

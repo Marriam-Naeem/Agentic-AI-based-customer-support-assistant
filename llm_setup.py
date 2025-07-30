@@ -15,6 +15,12 @@ from settings import (
     LARGE_MODEL
 )
 
+# Import embeddings
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    from langchain.embeddings import HuggingFaceEmbeddings
+
 class GroqLLMManager:
     """
     Manages Groq LLM instances for the 3-agent system.
@@ -58,6 +64,45 @@ class GroqLLMManager:
         
         return self.models[model_type]
 
+
+class EmbeddingManager:
+    """
+    Manages embedding models for the RAG system.
+    """
+    
+    def __init__(self):
+        self.embeddings = None
+        self._setup_embeddings()
+    
+    def _setup_embeddings(self):
+        """Initialize the embedding model."""
+        try:
+            import torch
+            # Force CPU and explicit dtype to avoid meta tensor issues
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_kwargs={
+                    'device': 'cpu',
+                    'torch_dtype': torch.float32,
+                    'low_cpu_mem_usage': True
+                },
+                encode_kwargs={'normalize_embeddings': True}
+            )
+        except Exception as e:
+            # Try alternative model
+            try:
+                self.embeddings = HuggingFaceEmbeddings(
+                    model_name="sentence-transformers/paraphrase-MiniLM-L3-v2",
+                    model_kwargs={'device': 'cpu'}
+                )
+            except Exception as e2:
+                raise e2
+    
+    def get_embeddings(self):
+        """Get the embedding model instance."""
+        return self.embeddings
+
+
 def setup_llm_models() -> Dict[str, Any]:
     """
     Initialize and return all language models for the 3-agent system.
@@ -77,32 +122,38 @@ def setup_llm_models() -> Dict[str, Any]:
         "llm_manager": llm_manager
     }
 
+
+def setup_embedding_model():
+    """
+    Initialize and return the embedding model for RAG system.
+    """
+    embedding_manager = EmbeddingManager()
+    return embedding_manager.get_embeddings()
+
+
 def test_groq_connection() -> bool:
     """Test the Groq API connection."""
     try:
+        from langchain_groq import ChatGroq
         test_llm = ChatGroq(
-            model="llama3-8b-8192",
             groq_api_key=GROQ_API_KEY,
-            max_tokens=50
+            model_name=SMALL_MODEL,
+            max_tokens=10
         )
-        
-        response = test_llm.invoke("Say 'Connection successful'")
-        return "successful" in response.content.lower()
-    
-    except Exception as e:
-        print(f"Groq connection test failed: {e}")
+        response = test_llm.invoke("Test")
+        return True
+    except Exception:
         return False
 
 # Initialize models when module is imported
 try:
     llm_models = setup_llm_models()
-    print("✅ 3-Agent LLM models initialized successfully")
+    embedding_model = setup_embedding_model()
     
-    if test_groq_connection():
-        print("✅ Groq API connection verified")
-    else:
+    if not test_groq_connection():
         print("⚠️ Groq API connection test failed")
         
 except Exception as e:
-    print(f"❌ Error initializing models: {e}")
+    print(f"Error initializing models: {e}")
     llm_models = {}
+    embedding_model = None

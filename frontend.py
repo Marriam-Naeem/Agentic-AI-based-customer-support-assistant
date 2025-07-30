@@ -1,10 +1,3 @@
-"""
-frontend.py
-
-Gradio frontend for the Customer Assistant chatbot.
-Provides a user-friendly chat interface that integrates with the LangGraph workflow.
-"""
-
 import gradio as gr
 import sys
 import os
@@ -20,23 +13,11 @@ from states import create_initial_state
 
 
 class ChatbotInterface:
-    """Gradio chatbot interface for the customer assistant."""
-    
     def __init__(self):
-        self.chat_history = []
         self.session_id = str(uuid.uuid4())
     
     def process_message(self, message: str, history: List[List[str]]) -> Tuple[str, List[List[str]]]:
-        """
-        Process a user message through the workflow and return the response.
-        
-        Args:
-            message: User's input message
-            history: Chat history from Gradio
-            
-        Returns:
-            Tuple of (response, updated_history)
-        """
+        """Process a user message through the workflow and return the response."""
         if not message.strip():
             return "", history
         
@@ -61,15 +42,7 @@ class ChatbotInterface:
             return "", history
     
     def _extract_response(self, result: dict) -> str:
-        """
-        Extract the appropriate response from the workflow result.
-        
-        Args:
-            result: The result from the workflow
-            
-        Returns:
-            Formatted response string
-        """
+        """Extract the appropriate response from the workflow result."""
         # Check for errors first
         if result.get("error"):
             return f"❌ Error: {result['error']}"
@@ -213,31 +186,17 @@ def create_chatbot_interface():
 
 
 def main():
-    """Main function to launch the Gradio interface."""
-    print("🚀 Starting Customer Assistant Chatbot...")
-    print("📝 Loading workflow and models...")
-    
     try:
-        # Create and launch the interface
         interface = create_chatbot_interface()
-        
-        print("✅ Interface created successfully!")
-        print("🌐 Launching web interface...")
-        
-        # Launch with specific settings
         interface.launch(
-            server_name="0.0.0.0",  # Allow external connections
-            server_port=7860,       # Default Gradio port
-            share=False,            # Set to True if you want a public link
-            debug=True,             # Enable debug mode
-            show_error=True,        # Show errors in the interface
-            quiet=False             # Show console output
+            server_name="localhost",
+            server_port=7860,
+            share=True,
+            debug=False
         )
-        
     except Exception as e:
-        print(f"❌ Error launching interface: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error launching interface: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
