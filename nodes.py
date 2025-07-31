@@ -28,18 +28,64 @@ class NodeFunctions:
     def router_agent(self, state: SupportState) -> dict:
         user_message = state.get("user_message", "")
         prompt = f"{ROUTER_SYSTEM_PROMPT}\n\nUser Message: \"{user_message}\"\n\nPlease classify this customer query and respond with the JSON format specified above."
+        
+        print("\n" + "="*60)
+        print("🔄 ROUTER LLM PROCESSING")
+        print("="*60)
+        print(f"📝 User Message: {user_message}")
+        print(f"🤖 Router Model: {type(self.router_llm).__name__}")
+        
         try:
+            # # Handle OllamaLLM vs LangChain models
+            # if hasattr(self.router_llm, 'generate'):
+            #     # OllamaLLM format
+            #     response = self.router_llm.generate(prompt)
+            #     response_content = response
+            # else:
+            #     # LangChain format (ChatGroq)
+            #     response = self.router_llm.invoke(prompt)
+            #     if hasattr(response, 'content'):
+            #         response_content = response.content
+            #     else:
+            #         # ChatGroq sometimes returns string directly
+            #         response_content = str(response)
             response = self.router_llm.invoke(prompt)
+            response_content = response.content
+            
+            print(f"Router Response: {response_content}")
+            
             try:
-                result = json.loads(response.content)
+                # Try to parse the response directly
+                result = json.loads(response_content)
+                print(f"📊 Parsed Result: {json.dumps(result, indent=2)}")
             except json.JSONDecodeError:
-                result = {"query_type": "faq", "classification": "General inquiry", "customer_info": {}}
+                # If direct parsing fails, try to extract JSON from the response
+                import re
+                json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
+                if json_match:
+                    try:
+                        extracted_json = json_match.group(0)
+                        result = json.loads(extracted_json)
+                        print(f"📊 Extracted JSON Result: {json.dumps(result, indent=2)}")
+                    except json.JSONDecodeError:
+                        result = {"query_type": "faq", "classification": "General inquiry", "customer_info": {}}
+                        print(f"⚠️ JSON Extraction Failed - Using default: {result}")
+                else:
+                    result = {"query_type": "faq", "classification": "General inquiry", "customer_info": {}}
+                    print(f"⚠️ No JSON found in response - Using default: {result}")
+            
             state.update({
                 "query_type": result.get("query_type", "faq"),
                 "customer_info": result.get("customer_info", {})
             })
+            print(f"🎯 Query Type: {result.get('query_type', 'faq')}")
+            print("="*60)
+        
         except Exception as e:
+            print(f"❌ Router Error: {str(e)}")
             state.update({"query_type": "faq"})
+            print("="*60)
+        
         return state
     
     def refund_node(self, state: SupportState) -> SupportState:

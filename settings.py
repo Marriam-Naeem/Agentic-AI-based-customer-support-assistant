@@ -28,7 +28,9 @@ Extract key information:
 - Product/service mentioned
 - Brief issue description
 
-Respond in JSON:
+CRITICAL: Respond ONLY with valid JSON. Do not include any explanatory text, comments, or additional information outside the JSON structure.
+
+Required JSON format:
 {
     "query_type": "refund|issue|faq",
     "classification": "brief description of the issue",
