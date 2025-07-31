@@ -7,29 +7,18 @@ class QueryType(str, Enum):
     FAQ = "faq"
 
 class SupportState(TypedDict):
-    # Core fields
     user_message: str
     query_type: str
     customer_info: Dict[str, Any]
     resolved: bool
     final_response: Optional[str]
-    
-    # Session management
     session_id: str
-    
-    # Tool execution
     last_llm_response: Optional[Any]
     tool_execution_error: Optional[str]
-    
-    # Refund workflow
     verification_result: Optional[Any]
     processing_result: Optional[Any]
-    
-    # RAG workflow
     search_results: List[Dict[str, Any]]
     subquestions: List[str]
-    
-    # Control
     escalation_required: bool
 
 def create_initial_state(user_message: str, session_id: str) -> SupportState:

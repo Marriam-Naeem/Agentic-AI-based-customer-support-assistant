@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# API & Model Config
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable is required")
@@ -11,12 +10,9 @@ if not GROQ_API_KEY:
 SMALL_MODEL = os.getenv("SMALL_MODEL")
 LARGE_MODEL = os.getenv("LARGE_MODEL")
 
-# RAG Config
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma_db")
 RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
 RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "200"))
-
-# System Prompts
 ROUTER_SYSTEM_PROMPT = """You are a query classification specialist. Analyze customer messages and classify into 3 categories:
 
 - refund: Customer wants money back, return, cancellation, refund request, or is providing additional information for an existing refund request

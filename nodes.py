@@ -9,7 +9,6 @@ from langgraph.prebuilt import ToolNode
 
 
 class NodeFunctions:
-    """Collection of node functions used in the agent workflow graph."""
     
     def __init__(self, models: Dict[str, Any]):
         self.router_llm = models.get("router_llm")
@@ -28,16 +27,12 @@ class NodeFunctions:
     def router_agent(self, state: SupportState) -> dict:
         user_message = state.get("user_message", "")
         
-        # Check if this is a follow-up message in a refund conversation
-        # Look for previous refund-related state
         previous_query_type = state.get("query_type", "")
         customer_info = state.get("customer_info", {})
         
-        # Smart context detection
         context_info = ""
         is_followup = False
         
-        # Check if this looks like a follow-up message
         if (previous_query_type == "refund" or 
             customer_info.get("order_id") or 
             customer_info.get("email") or
@@ -45,72 +40,36 @@ class NodeFunctions:
             is_followup = True
             context_info = "\n\nCONTEXT: This appears to be a follow-up message in a refund conversation. Previous information indicates this is a refund request."
         
-        # Enhanced prompt with context awareness
         prompt = f"{ROUTER_SYSTEM_PROMPT}\n\nCurrent User Message: \"{user_message}\"{context_info}\n\nIMPORTANT CLASSIFICATION RULES:\n1. If this message contains order numbers, emails, or appears to be continuing a refund conversation, classify it as 'refund'\n2. If this message is providing additional information for a refund request, classify it as 'refund'\n3. If this message is a standalone question about policies or general information, classify it as 'faq'\n4. If this message describes technical problems or errors, classify it as 'issue'\n\nPlease classify this customer query and respond with the JSON format specified above."
         
-        print("\n" + "="*60)
-        print("🔄 ROUTER LLM PROCESSING")
-        print("="*60)
-        print(f"📝 User Message: {user_message}")
-        print(f"🤖 Router Model: {type(self.router_llm).__name__}")
-        print(f"🔍 Previous Query Type: {previous_query_type}")
-        print(f"🔍 Customer Info: {customer_info}")
-        print(f"🔍 Is Follow-up: {is_followup}")
-        
         try:
-            # # Handle OllamaLLM vs LangChain models
-            # if hasattr(self.router_llm, 'generate'):
-            #     # OllamaLLM format
-            #     response = self.router_llm.generate(prompt)
-            #     response_content = response
-            # else:
-            #     # LangChain format (ChatGroq)
-            #     response = self.router_llm.invoke(prompt)
-            #     if hasattr(response, 'content'):
-            #         response_content = response.content
-            #     else:
-            #         # ChatGroq sometimes returns string directly
-            #         response_content = str(response)
             response = self.router_llm.invoke(prompt)
-            # Handle both string responses (Ollama) and object responses (ChatGroq)
             if hasattr(response, 'content'):
                 response_content = response.content
             else:
                 response_content = str(response)
             
-            print(f"Router Response: {response_content}")
-            
             try:
-                # Try to parse the response directly
                 result = json.loads(response_content)
-                print(f"📊 Parsed Result: {json.dumps(result, indent=2)}")
             except json.JSONDecodeError:
-                # If direct parsing fails, try to extract JSON from the response
                 import re
                 json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
                 if json_match:
                     try:
                         extracted_json = json_match.group(0)
                         result = json.loads(extracted_json)
-                        print(f"📊 Extracted JSON Result: {json.dumps(result, indent=2)}")
                     except json.JSONDecodeError:
                         result = {"query_type": "faq", "classification": "General inquiry", "customer_info": {}}
-                        print(f"⚠️ JSON Extraction Failed - Using default: {result}")
                 else:
                     result = {"query_type": "faq", "classification": "General inquiry", "customer_info": {}}
-                    print(f"⚠️ No JSON found in response - Using default: {result}")
             
             state.update({
                 "query_type": result.get("query_type", "faq"),
                 "customer_info": result.get("customer_info", {})
             })
-            print(f"🎯 Query Type: {result.get('query_type', 'faq')}")
-            print("="*60)
         
         except Exception as e:
-            print(f"❌ Router Error: {str(e)}")
             state.update({"query_type": "faq"})
-            print("="*60)
         
         return state
     
@@ -148,7 +107,6 @@ class NodeFunctions:
                 state["last_llm_response"] = response
             else:
                 state["last_llm_response"] = None
-                # Handle both string responses (Ollama) and object responses (ChatGroq)
                 response_content = response.content if hasattr(response, 'content') else str(response)
                 cleaned_response = self._clean_response(response_content)
                 state["final_response"] = cleaned_response
@@ -189,7 +147,6 @@ class NodeFunctions:
                 content="",
                 tool_calls=[allowed_tool_call]
             )
-            
             tool_state = {"messages": [filtered_ai_message]}
             tool_response = self.refund_tool_node.invoke(tool_state)
             
@@ -216,7 +173,6 @@ class NodeFunctions:
             prompt = self._create_final_answer_prompt(user_message, query_type, search_results, subquestions)
             try:
                 response = self.issue_faq_llm.invoke(prompt)
-                # Handle both string responses (Ollama) and object responses (ChatGroq)
                 response_content = response.content if hasattr(response, 'content') else str(response)
                 cleaned_response = self._clean_response(response_content)
                 state["final_response"] = cleaned_response
@@ -232,7 +188,6 @@ class NodeFunctions:
             if tool_calls_present:
                 state["last_llm_response"] = response
             else:
-                # Handle both string responses (Ollama) and object responses (ChatGroq)
                 response_content = response.content if hasattr(response, 'content') else str(response)
                 if "escalate" in response_content.lower() or "human" in response_content.lower():
                     state["escalation_required"] = True
@@ -253,7 +208,6 @@ class NodeFunctions:
         try:
             from langchain_core.messages import AIMessage
             
-
             ai_message = AIMessage(
                 content="",
                 tool_calls=last_llm_response.tool_calls
@@ -262,7 +216,6 @@ class NodeFunctions:
             tool_state = {"messages": [ai_message]}
             tool_response = self.document_search_tool_node.invoke(tool_state)
             
-
             search_results = []
             subquestions = []
             
@@ -272,17 +225,14 @@ class NodeFunctions:
                         search_data = json.loads(msg.content)
                         if search_data.get("success"):
                             search_results.extend(search_data.get("results", []))
-
                             subquestions.append(search_data.get("query", ""))
                     except json.JSONDecodeError:
                         pass
             
-
             state["search_results"] = search_results
             state["subquestions"] = subquestions
             state["last_llm_response"] = None
             
-
             if not search_results:
                 state["escalation_required"] = True
                 state["final_response"] = "I couldn't find relevant information to answer your question. Let me connect you with a human agent who can help you better."
@@ -321,5 +271,5 @@ class NodeFunctions:
             response = re.sub(pattern, '', response, flags=re.DOTALL | re.IGNORECASE)
         response = re.sub(r'\n\s*\n\s*\n', '\n\n', response)
         response = response.strip()
-        
+    
         return response

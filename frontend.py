@@ -18,7 +18,6 @@ class ChatbotInterface:
         if not message.strip():
             return "", history
         try:
-            # Use the session config for memory management
             result = graph.invoke(
                 create_initial_state(message, self.session_id),
                 config=self.config
@@ -30,10 +29,8 @@ class ChatbotInterface:
             return "", history
     
     def clear_session(self) -> Tuple[str, List[List[str]]]:
-        """Clear the current session and generate a new session ID"""
         self.session_id = str(uuid.uuid4())
         self.config = {"configurable": {"thread_id": self.session_id}}
-        print(f"🔄 New session created: {self.session_id}")
         return "", []
     
     def _extract_response(self, result: dict) -> str:
@@ -63,16 +60,7 @@ def create_chatbot_interface():
     """
     
     with gr.Blocks(css=custom_css, title="Customer Assistant Chatbot") as interface:
-        # Add JavaScript to handle page reload and generate new session
-        gr.HTML("""
-        <script>
-        // Generate new session on page load/reload
-        window.addEventListener('load', function() {
-            // This will trigger a new session creation
-            console.log('Page loaded - session management active');
-        });
-        </script>
-        """)
+
         gr.Markdown("""
         # 🤖 Customer Assistant Chatbot
         
@@ -83,9 +71,6 @@ def create_chatbot_interface():
         
         Simply type your question below and I'll assist you!
         """)
-        
-        # Session info display
-        # session_info = gr.Markdown(f"**Session ID:** `{chatbot.session_id}`")
         
         chatbot_component = gr.Chatbot(label="Chat History", height=500, show_label=True, container=True, bubble_full_width=False)
         with gr.Row():
@@ -106,11 +91,10 @@ def create_chatbot_interface():
             return chatbot.process_message(message, history)
         def clear_chat():
             new_msg, new_history = chatbot.clear_session()
-            new_session_info = f"**Session ID:** `{chatbot.session_id}`"
-            return new_msg, new_history, new_session_info
+            return new_msg, new_history
         submit_btn.click(user_input, inputs=[msg, chatbot_component], outputs=[msg, chatbot_component])
         msg.submit(user_input, inputs=[msg, chatbot_component], outputs=[msg, chatbot_component])
-        clear_btn.click(clear_chat, outputs=[msg, chatbot_component, session_info])
+        clear_btn.click(clear_chat, outputs=[msg, chatbot_component])
     
     return interface
 
