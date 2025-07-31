@@ -2,6 +2,7 @@ from typing import Dict, Any, Union
 from langchain_groq import ChatGroq
 from settings import GROQ_API_KEY, SMALL_MODEL, LARGE_MODEL
 from ollamaModel import OllamaLLM
+from langchain_community.llms import Ollama
 
 try:
     from langchain_huggingface import HuggingFaceEmbeddings
@@ -13,11 +14,16 @@ class GroqLLMManager:
         self.models = {
             # "router": OllamaLLM(endpoint="http://ec2-3-6-37-251.ap-south-1.compute.amazonaws.com:11434", model="llama3:8B", temperature=0.1, max_tokens=512),
             "router": ChatGroq(groq_api_key=GROQ_API_KEY, model=SMALL_MODEL, temperature=0.1, max_tokens=512),
+            # "router": Ollama(
+            #     base_url="http://ec2-65-2-166-41.ap-south-1.compute.amazonaws.com:11434",
+            #     model="llama3:8B",
+            #     temperature=0.2
+            # ),
             "refund": ChatGroq(groq_api_key=GROQ_API_KEY, model=LARGE_MODEL, temperature=0.2, max_tokens=1024),
             "issue_faq": ChatGroq(groq_api_key=GROQ_API_KEY, model=LARGE_MODEL, temperature=0.3, max_tokens=1024)
         }
     
-    def get_model(self, model_type: str) -> Union[ChatGroq, OllamaLLM]:
+    def get_model(self, model_type: str) -> Union[ChatGroq, Ollama]:
         if model_type not in self.models:
             raise ValueError(f"Model type '{model_type}' not found. Available: {list(self.models.keys())}")
         return self.models[model_type]

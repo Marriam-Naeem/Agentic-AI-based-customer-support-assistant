@@ -14,6 +14,9 @@ class SupportState(TypedDict):
     resolved: bool
     final_response: Optional[str]
     
+    # Session management
+    session_id: str
+    
     # Tool execution
     last_llm_response: Optional[Any]
     tool_execution_error: Optional[str]
@@ -36,6 +39,7 @@ def create_initial_state(user_message: str, session_id: str) -> SupportState:
         customer_info={},
         resolved=False,
         final_response=None,
+        session_id=session_id,
         last_llm_response=None,
         tool_execution_error=None,
         verification_result=None,

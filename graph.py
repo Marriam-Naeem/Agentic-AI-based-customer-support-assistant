@@ -3,6 +3,9 @@ from langgraph.graph import StateGraph, START
 from states import SupportState
 from llm_setup import setup_llm_models
 from nodes import NodeFunctions
+from langgraph.checkpoint.memory import InMemorySaver
+
+memory = InMemorySaver()
 
 models = setup_llm_models()
 node_functions = NodeFunctions(models)
@@ -46,4 +49,4 @@ builder.add_conditional_edges("refund_node", refund_condition)
 builder.add_conditional_edges("refund_tools", refund_tools_condition)
 builder.add_conditional_edges("non_refund_node", non_refund_condition)
 builder.add_conditional_edges("rag_tools", rag_tools_condition)
-graph = builder.compile()
+graph = builder.compile(checkpointer=memory)

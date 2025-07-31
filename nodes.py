@@ -27,13 +27,35 @@ class NodeFunctions:
     
     def router_agent(self, state: SupportState) -> dict:
         user_message = state.get("user_message", "")
-        prompt = f"{ROUTER_SYSTEM_PROMPT}\n\nUser Message: \"{user_message}\"\n\nPlease classify this customer query and respond with the JSON format specified above."
+        
+        # Check if this is a follow-up message in a refund conversation
+        # Look for previous refund-related state
+        previous_query_type = state.get("query_type", "")
+        customer_info = state.get("customer_info", {})
+        
+        # Smart context detection
+        context_info = ""
+        is_followup = False
+        
+        # Check if this looks like a follow-up message
+        if (previous_query_type == "refund" or 
+            customer_info.get("order_id") or 
+            customer_info.get("email") or
+            any(keyword in user_message.lower() for keyword in ["order", "email", "refund", "money back", "cancel"])):
+            is_followup = True
+            context_info = "\n\nCONTEXT: This appears to be a follow-up message in a refund conversation. Previous information indicates this is a refund request."
+        
+        # Enhanced prompt with context awareness
+        prompt = f"{ROUTER_SYSTEM_PROMPT}\n\nCurrent User Message: \"{user_message}\"{context_info}\n\nIMPORTANT CLASSIFICATION RULES:\n1. If this message contains order numbers, emails, or appears to be continuing a refund conversation, classify it as 'refund'\n2. If this message is providing additional information for a refund request, classify it as 'refund'\n3. If this message is a standalone question about policies or general information, classify it as 'faq'\n4. If this message describes technical problems or errors, classify it as 'issue'\n\nPlease classify this customer query and respond with the JSON format specified above."
         
         print("\n" + "="*60)
         print("🔄 ROUTER LLM PROCESSING")
         print("="*60)
         print(f"📝 User Message: {user_message}")
         print(f"🤖 Router Model: {type(self.router_llm).__name__}")
+        print(f"🔍 Previous Query Type: {previous_query_type}")
+        print(f"🔍 Customer Info: {customer_info}")
+        print(f"🔍 Is Follow-up: {is_followup}")
         
         try:
             # # Handle OllamaLLM vs LangChain models
@@ -50,7 +72,11 @@ class NodeFunctions:
             #         # ChatGroq sometimes returns string directly
             #         response_content = str(response)
             response = self.router_llm.invoke(prompt)
-            response_content = response.content
+            # Handle both string responses (Ollama) and object responses (ChatGroq)
+            if hasattr(response, 'content'):
+                response_content = response.content
+            else:
+                response_content = str(response)
             
             print(f"Router Response: {response_content}")
             
@@ -122,7 +148,9 @@ class NodeFunctions:
                 state["last_llm_response"] = response
             else:
                 state["last_llm_response"] = None
-                cleaned_response = self._clean_response(response.content)
+                # Handle both string responses (Ollama) and object responses (ChatGroq)
+                response_content = response.content if hasattr(response, 'content') else str(response)
+                cleaned_response = self._clean_response(response_content)
                 state["final_response"] = cleaned_response
                 state["resolved"] = True
         except Exception as e:
@@ -188,7 +216,9 @@ class NodeFunctions:
             prompt = self._create_final_answer_prompt(user_message, query_type, search_results, subquestions)
             try:
                 response = self.issue_faq_llm.invoke(prompt)
-                cleaned_response = self._clean_response(response.content)
+                # Handle both string responses (Ollama) and object responses (ChatGroq)
+                response_content = response.content if hasattr(response, 'content') else str(response)
+                cleaned_response = self._clean_response(response_content)
                 state["final_response"] = cleaned_response
                 state["resolved"] = True
                 return state
@@ -202,11 +232,13 @@ class NodeFunctions:
             if tool_calls_present:
                 state["last_llm_response"] = response
             else:
-                if "escalate" in response.content.lower() or "human" in response.content.lower():
+                # Handle both string responses (Ollama) and object responses (ChatGroq)
+                response_content = response.content if hasattr(response, 'content') else str(response)
+                if "escalate" in response_content.lower() or "human" in response_content.lower():
                     state["escalation_required"] = True
-                    state["final_response"] = response.content
+                    state["final_response"] = response_content
                 else:
-                    state["final_response"] = response.content
+                    state["final_response"] = response_content
                     state["resolved"] = True
         except Exception as e:
             state["tool_execution_error"] = f"Error processing {query_type} query: {str(e)}"

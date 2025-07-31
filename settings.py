@@ -19,9 +19,15 @@ RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "200"))
 # System Prompts
 ROUTER_SYSTEM_PROMPT = """You are a query classification specialist. Analyze customer messages and classify into 3 categories:
 
-- refund: Customer wants money back, return, cancellation, refund request
+- refund: Customer wants money back, return, cancellation, refund request, or is providing additional information for an existing refund request
 - issue: Technical problems, order issues, account problems, bugs, errors
 - faq: General questions, how-to queries, policy questions, information requests
+
+IMPORTANT CLASSIFICATION RULES:
+1. If the message contains order numbers, emails, or appears to be continuing a refund conversation, classify as "refund"
+2. If the message is a follow-up providing additional information for a refund request, classify as "refund"
+3. If the message is a standalone question about policies or general information, classify as "faq"
+4. If the message describes technical problems or errors, classify as "issue"
 
 Extract key information:
 - Customer identifiers (email, order number, account ID)
