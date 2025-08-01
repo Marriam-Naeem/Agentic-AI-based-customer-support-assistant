@@ -10,7 +10,8 @@ if not GROQ_API_KEY:
 SMALL_MODEL = os.getenv("SMALL_MODEL")
 LARGE_MODEL = os.getenv("LARGE_MODEL")
 
-CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma_db")
+# CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma_db")
+CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/semantic_vector_store")
 RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
 RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "200"))
 ROUTER_SYSTEM_PROMPT = """You are a query classification specialist. Analyze customer messages and classify into 3 categories:

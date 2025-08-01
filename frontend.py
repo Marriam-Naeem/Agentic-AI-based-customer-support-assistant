@@ -35,19 +35,19 @@ class ChatbotInterface:
     
     def _extract_response(self, result: dict) -> str:
         if result.get("error"):
-            return f"❌ Error: {result['error']}"
+            return f"Error: {result['error']}"
         if result.get("escalation_required"):
-            return f"🔄 **Escalation Required**\n\n{result.get('escalation_reason', 'Complex issue detected')}\n\nYour request has been escalated to a human agent who will contact you soon."
+            return f"**Escalation Required**\n\n{result.get('escalation_reason', 'Complex issue detected')}\n\nYour request has been escalated to a human agent who will contact you soon."
         if result.get("final_response"):
             return result["final_response"]
         if result.get("processing_result"):
-            return f"✅ **Refund Processed Successfully**\n\n{result['processing_result'].get('message', 'Your refund has been processed.')}"
+            return f"**Refund Processed Successfully**\n\n{result['processing_result'].get('message', 'Your refund has been processed.')}"
         if result.get("verification_result"):
             verification = result["verification_result"]
-            return f"✅ **Order Verified**\n\n{verification.get('message', 'Your order has been verified and is being processed.')}" if verification.get("verified") else f"❌ **Verification Failed**\n\n{verification.get('message', 'We could not verify your order. Please check your order number and email.')}"
+            return f"**Order Verified**\n\n{verification.get('message', 'Your order has been verified and is being processed.')}" if verification.get("verified") else f"**Verification Failed**\n\n{verification.get('message', 'We could not verify your order. Please check your order number and email.')}"
         if result.get("search_results"):
             return result.get("final_response", "I found some information but couldn't format it properly. Please try asking your question again.")
-        return f"🤖 I've processed your {result.get('query_type', 'unknown')} request. Please provide more details if you need specific assistance."
+        return f"I've processed your {result.get('query_type', 'unknown')} request. Please provide more details if you need specific assistance."
 
 
 def create_chatbot_interface():
@@ -62,7 +62,7 @@ def create_chatbot_interface():
     with gr.Blocks(css=custom_css, title="Customer Assistant Chatbot") as interface:
 
         gr.Markdown("""
-        # 🤖 Customer Assistant Chatbot
+        # Customer Assistant Chatbot
         
         Welcome! I'm here to help you with:
         - **Refunds**: Process refund requests for your orders

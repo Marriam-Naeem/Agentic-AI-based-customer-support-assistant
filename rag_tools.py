@@ -1,8 +1,3 @@
-"""
-Optimized RAG document search tool with simple text chunking.
-Supports PDF, CSV, JSON files with efficient text splitting.
-"""
-
 import json
 import os
 from typing import List, Dict, Any
@@ -22,6 +17,11 @@ try:
     from langchain_huggingface import HuggingFaceEmbeddings
 except ImportError:
     from langchain.embeddings import HuggingFaceEmbeddings
+
+try:
+    from langchain_experimental.text_splitter import SemanticChunker
+except ImportError:
+    SemanticChunker = None
 
 from settings import RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP, CHROMA_PERSIST_DIR
 
@@ -54,15 +54,49 @@ class SimpleTextSplitter:
         return chunks
 
 
+class SemanticTextSplitter:
+    def __init__(self, embeddings_model):
+        if SemanticChunker is None:
+            raise ImportError("SemanticChunker not available. Please install langchain-experimental.")
+        self.semantic_splitter = SemanticChunker(
+            embeddings_model, 
+            breakpoint_threshold_type="gradient"
+        )
+    
+    def create_chunks(self, text: str, source: str, file_type: str) -> List[Dict[str, Any]]:
+        try:
+            text_chunks = self.semantic_splitter.split_text(text)
+            chunks = []
+            for i, chunk_text in enumerate(text_chunks):
+                if chunk_text.strip():
+                    chunks.append({
+                        "content": chunk_text,  # Return as-is without strip()
+                        "metadata": {
+                            "source": source, "file_name": os.path.basename(source),
+                            "file_type": file_type, "chunk_index": i,
+                            "chunk_type": "semantic", "processed_at": datetime.now().isoformat()
+                        }
+                    })
+            return chunks
+        except Exception as e:
+            print(f"Error in semantic chunking: {e}")
+            return []
+
+
 class RAGSystem:
     def __init__(self):
         self.persist_directory = CHROMA_PERSIST_DIR
+        self.semantic_persist_directory = os.path.join(os.path.dirname(CHROMA_PERSIST_DIR), "semantic_vector_store")
         self.text_splitter = SimpleTextSplitter(RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP)
         self.embeddings = self._get_embeddings()
         self.vectorstore = None
+        self.semantic_vectorstore = None
         self.processed_chunks = []
+        self.semantic_chunks = []
         self.is_initialized = False
+        self.semantic_initialized = False
         self._initialize_vectorstore()
+        self._initialize_semantic_vectorstore()
         self._auto_initialize()
     
     def _get_embeddings(self):
@@ -96,6 +130,22 @@ class RAGSystem:
             self.vectorstore = Chroma(persist_directory=self.persist_directory, embedding_function=self.embeddings)
         except Exception as e:
             print(f"Failed to initialize vector store: {e}")
+    
+    def _initialize_semantic_vectorstore(self):
+        try:
+            os.makedirs(self.semantic_persist_directory, exist_ok=True)
+            if os.path.exists(self.semantic_persist_directory) and os.listdir(self.semantic_persist_directory):
+                try:
+                    self.semantic_vectorstore = Chroma(persist_directory=self.semantic_persist_directory, embedding_function=self.embeddings)
+                    test_search = self.semantic_vectorstore.similarity_search("test", k=1)
+                    if test_search:
+                        self.semantic_initialized = True
+                        return
+                except Exception:
+                    pass
+            self.semantic_vectorstore = Chroma(persist_directory=self.semantic_persist_directory, embedding_function=self.embeddings)
+        except Exception as e:
+            print(f"Failed to initialize semantic vector store: {e}")
     
     def _auto_initialize(self):
         if self.is_initialized:
@@ -210,7 +260,21 @@ class RAGSystem:
                 for i, chunk_info in enumerate(self.processed_chunks, 1):
                     f.write(f"CHUNK {i:04d}\nSource: {chunk_info['metadata']['source']}\n")
                     f.write(f"File Type: {chunk_info['metadata']['file_type']}\nChunk Index: {chunk_info['metadata']['chunk_index']}\n")
-                    f.write("-" * 60 + "\nContent: {chunk_info['content']}\n" + "=" * 80 + "\n\n")
+                    f.write("-" * 60 + "\nContent: {}\n".format(chunk_info['content']) + "=" * 80 + "\n\n")
+        except Exception:
+            pass
+    
+    def _save_semantic_chunks_to_file(self):
+        try:
+            os.makedirs("./data", exist_ok=True)
+            with open("./data/semantic_chunks.txt", 'w', encoding='utf-8') as f:
+                f.write(f"Semantic Document Chunks\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Total semantic chunks: {len(self.semantic_chunks)}\n")
+                f.write("=" * 80 + "\n\n")
+                for i, chunk_info in enumerate(self.semantic_chunks, 1):
+                    f.write(f"SEMANTIC CHUNK {i:04d}\nSource: {chunk_info['metadata']['source']}\n")
+                    f.write(f"File Type: {chunk_info['metadata']['file_type']}\nChunk Index: {chunk_info['metadata']['chunk_index']}\n")
+                    f.write("-" * 60 + "\nContent: {}\n".format(chunk_info['content']) + "=" * 80 + "\n\n")
         except Exception:
             pass
     
@@ -258,6 +322,58 @@ class RAGSystem:
             except Exception:
                 self.is_initialized = False
     
+    def index_documents_semantic(self, document_paths: List[str]):
+        if self.semantic_initialized:
+            return
+        
+        try:
+            semantic_splitter = SemanticTextSplitter(self.embeddings)
+        except ImportError:
+            print("SemanticChunker not available. Please install langchain-experimental.")
+            return
+        
+        all_semantic_documents = []
+        self.semantic_chunks = []
+        
+        for doc_path in document_paths:
+            if not os.path.exists(doc_path):
+                continue
+            file_ext = os.path.splitext(doc_path)[1].lower()
+            
+            if file_ext == '.pdf':
+                full_text = self._process_pdf(doc_path)
+                file_type = "pdf"
+            elif file_ext == '.csv':
+                full_text = self._process_csv(doc_path)
+                file_type = "csv"
+            elif file_ext == '.json':
+                full_text = self._process_json(doc_path)
+                file_type = "json"
+            else:
+                continue
+            
+            if not full_text.strip():
+                continue
+            
+            semantic_chunks = semantic_splitter.create_chunks(full_text, doc_path, file_type)
+            for chunk_info in semantic_chunks:
+                if chunk_info['content'].strip():
+                    doc = Document(page_content=chunk_info['content'], metadata=chunk_info['metadata'])
+                    all_semantic_documents.append(doc)
+                    self.semantic_chunks.append(chunk_info)
+        
+        if all_semantic_documents:
+            self._save_semantic_chunks_to_file()
+            try:
+                batch_size = 50
+                for i in range(0, len(all_semantic_documents), batch_size):
+                    batch = all_semantic_documents[i:i + batch_size]
+                    self.semantic_vectorstore.add_documents(batch)
+                self.semantic_initialized = True
+            except Exception as e:
+                print(f"Error indexing semantic documents: {e}")
+                self.semantic_initialized = False
+    
     def search_documents(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
         try:
             if not self.vectorstore or not self.is_initialized:
@@ -270,6 +386,24 @@ class RAGSystem:
                     "similarity_score": float(score), "source": doc.metadata.get("source", "unknown"),
                     "file_name": doc.metadata.get("file_name", "unknown"),
                     "file_type": doc.metadata.get("file_type", "unknown")
+                })
+            return formatted_results
+        except Exception:
+            return []
+    
+    def search_documents_semantic(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        try:
+            if not self.semantic_vectorstore or not self.semantic_initialized:
+                return []
+            results = self.semantic_vectorstore.similarity_search_with_score(query, k=k)
+            formatted_results = []
+            for doc, score in results:
+                formatted_results.append({
+                    "content": doc.page_content, "metadata": doc.metadata,
+                    "similarity_score": float(score), "source": doc.metadata.get("source", "unknown"),
+                    "file_name": doc.metadata.get("file_name", "unknown"),
+                    "file_type": doc.metadata.get("file_type", "unknown"),
+                    "chunk_type": "semantic"
                 })
             return formatted_results
         except Exception:
@@ -307,6 +441,76 @@ def document_search_tool(query: str, max_results: int = 5) -> str:
             "similarity_score": result["similarity_score"]
         } for result in results]
         
+        # Pretty print retrieved context to console
+        print("\n" + "="*80)
+        print("RETRIEVED CONTEXT FOR EXAMINATION")
+        print("="*80)
+        print(f"Query: {query}")
+        print(f"Results found: {len(formatted_results)}")
+        print("="*80 + "\n")
+        
+        for i, result in enumerate(formatted_results, 1):
+            print(f"Result {i}")
+            print(f"Source: {result.get('source', 'Unknown')}")
+            print(f"File: {result.get('file_name', 'Unknown')}")
+            print(f"Type: {result.get('file_type', 'Unknown')}")
+            print(f"Relevance Score: {result.get('similarity_score', 0):.4f}")
+            print("-" * 60)
+            print(f"Content:")
+            print(result.get('content', 'No content available'))
+            print("="*80 + "\n")
+        
+        return json.dumps({
+            "success": True, "query": query,
+            "results_count": len(formatted_results), "results": formatted_results
+        }, indent=2)
+    
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "query": query})
+
+
+@tool
+def semantic_document_search_tool(query: str, max_results: int = 5) -> str:
+    """Search through company documents using semantic chunking and vector similarity."""
+    try:
+        if not query.strip():
+            return json.dumps({"success": False, "error": "Empty search query provided"})
+        
+        rag_system = get_rag_system()
+        results = rag_system.search_documents_semantic(query, k=max_results)
+        
+        if not results:
+            return json.dumps({
+                "success": False, "message": "No relevant semantic documents found",
+                "query": query, "results": []
+            })
+        
+        formatted_results = [{
+            "content": result["content"], "source": result["source"],
+            "file_name": result["file_name"], "file_type": result["file_type"],
+            "similarity_score": result["similarity_score"], "chunk_type": "semantic"
+        } for result in results]
+        
+        # Pretty print retrieved context to console
+        print("\n" + "="*80)
+        print("SEMANTIC RETRIEVED CONTEXT FOR EXAMINATION")
+        print("="*80)
+        print(f"Query: {query}")
+        print(f"Results found: {len(formatted_results)}")
+        print("="*80 + "\n")
+        
+        for i, result in enumerate(formatted_results, 1):
+            print(f"Semantic Result {i}")
+            print(f"Source: {result.get('source', 'Unknown')}")
+            print(f"File: {result.get('file_name', 'Unknown')}")
+            print(f"Type: {result.get('file_type', 'Unknown')}")
+            print(f"Relevance Score: {result.get('similarity_score', 0):.4f}")
+            print(f"Chunk Type: {result.get('chunk_type', 'semantic')}")
+            print("-" * 60)
+            print(f"Content:")
+            print(result.get('content', 'No content available'))
+            print("="*80 + "\n")
+        
         return json.dumps({
             "success": True, "query": query,
             "results_count": len(formatted_results), "results": formatted_results
@@ -317,4 +521,4 @@ def document_search_tool(query: str, max_results: int = 5) -> str:
 
 
 def get_document_search_tools():
-    return [document_search_tool]
+    return [document_search_tool, semantic_document_search_tool]
