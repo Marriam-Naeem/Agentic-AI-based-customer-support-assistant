@@ -41,7 +41,7 @@ customer-support-assistant/
    ```bash
    GROQ_API_KEY=your_api_key
    HUGGINGFACE_TOKEN=your_token 
-   DEMINI_API_KEY=your key
+   GEMINI_API_KEY=your key
    ```
 
 3. **Run the application**
