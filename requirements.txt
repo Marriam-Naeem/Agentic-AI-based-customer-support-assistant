@@ -7,6 +7,10 @@ langchain-groq>=0.1.0
 langchain_chroma
 langchain_huggingface
 langchain-experimental>=0.0.50
+smolagents
+smolagents[litellm]   
+smolagents[openai]                                                                                                   
+
 
 # Vector Store and Embeddings
 chromadb>=0.4.0

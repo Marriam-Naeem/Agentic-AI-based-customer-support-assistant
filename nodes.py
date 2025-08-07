@@ -1,12 +1,255 @@
 import json
+import re
+import time
+import random
 from typing import Dict, Any, List
+from smolagents import ToolCallingAgent, CodeAgent, tool
 
 from states import SupportState
 from settings import ROUTER_SYSTEM_PROMPT, REFUND_SYSTEM_PROMPT, NON_REFUND_SYSTEM_PROMPT
 from refund_tools import get_refund_tools
 from rag_tools import get_document_search_tools
-from langgraph.prebuilt import ToolNode
 
+# Get existing tools
+refund_tools_list = get_refund_tools()
+document_tools_list = get_document_search_tools()
+
+def handle_rate_limit(func):
+    """Decorator to handle rate limiting with exponential backoff"""
+    def wrapper(*args, **kwargs):
+        max_retries = 3
+        base_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                if "rate_limit" in str(e).lower() or "rate limit" in str(e).lower():
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                        print(f"Rate limit hit, waiting {delay:.1f} seconds before retry {attempt + 1}/{max_retries}")
+                        time.sleep(delay)
+                        continue
+                raise e
+        return func(*args, **kwargs)
+    return wrapper
+
+# Create SmolAgents tools from existing tools
+@tool
+def refund_verification_tool(order_id: str, customer_email: str = None) -> str:
+    """Verify refund eligibility before processing.
+    
+    Args:
+        order_id: The order ID to verify for refund eligibility
+        customer_email: The customer's email address for verification
+    """
+    for tool in refund_tools_list:
+        if tool.name == "refund_verification_tool":
+            return tool.func(order_id=order_id, customer_email=customer_email)
+    return json.dumps({"error": "Tool not found"})
+
+@tool
+def refund_processing_tool(order_id: str) -> str:
+    """Execute actual refund processing after verification. ONLY call this after successful verification. WARNING: This tool should only be called if refund_verification_tool returned 'verified': true.
+    
+    Args:
+        order_id: The order ID to process refund for
+    """
+    for tool in refund_tools_list:
+        if tool.name == "refund_processing_tool":
+            return tool.func(order_id=order_id)
+    return json.dumps({"error": "Tool not found"})
+
+@tool
+def document_search_tool(query: str, max_results: int = 2) -> str:
+    """Search through company documents using vector similarity from the configured vector store path.
+    
+    Args:
+        query: The search query to find relevant documents
+        max_results: Maximum number of results to return (default: 2)
+    """
+    for tool in document_tools_list:
+        if tool.name == "document_search_tool":
+            return tool.func(query=query, max_results=max_results)
+    return json.dumps({"error": "Tool not found"})
+
+@handle_rate_limit
+def create_smolagents_system(models):
+    """Create SmolAgents multi-agent system following the documentation pattern"""
+    
+    refund_agent = ToolCallingAgent(
+        tools=[refund_verification_tool, refund_processing_tool],
+        model=models["refund_llm"],
+        max_steps=2,
+        name="refund_agent",
+        description="Agent that verifies refund eligibility and, if eligible, processes the refund and sends a professional email response.",
+        instructions="""
+You are a refund processing agent that answers users queries. Your workflow is:
+1. Call refund_verification_tool with the order_id (and customer_email if available).
+2. If the result of refund_verification_tool is true (verified), call refund_processing_tool with the order_id.
+3. Generate a professional email answer to the customer based on the results of the tool calls.
+4. If any information is missing or there is a placeholder for that, just tell the customer that the information is missing.
+Only process the refund if verification is successful. If verification fails, explain the reason to the customer in your email response.
+"""
+    )
+     
+    support_agent = CodeAgent(
+        tools=[document_search_tool],
+        model=models["issue_faq_llm"],
+        max_steps=10,
+        verbosity_level=2,
+        name="support_agent",
+        description="Support agent that answers user queries by searching company documents, provides step-by-step answers, and never reveals the document source to the user.",
+        instructions="""
+You are a support agent that answers user queries by searching company document but never tell the user from which document the answer was taken.
+
+1. Use document_search_tool to find relevant information for the user's question.
+2. Extract the most relevant content from the search results.
+3. Generate a professional email response that contains a steps by step answers to the customer's question using the information found.
+4. If no relevant information is found or if any information is missing, politely inform the customer that the information is not available or missing.
+6. Always keep your response clear, concise, professional and strictly relevent to the customer's question.
+"""
+    )
+    
+    # Create manager agent that orchestrates the agents
+    manager_agent = ToolCallingAgent(
+        tools=[],
+        model=models["router_llm"],
+        managed_agents=[refund_agent, support_agent],
+        name="manager_agent",
+        description="Manager agent that autonomously decides which specialized agent to call based on customer request analysis."
+    )
+
+    formatter_agent = CodeAgent(
+        tools=[],
+        model=models["router_llm"],
+        name="formatter_agent",
+        description="Formatter agent that formats the response from the manager agent into a professional email response with proper start and end."
+    )
+    
+    return {
+        "manager_agent": manager_agent,
+        "refund_agent": refund_agent,
+        "support_agent": support_agent,
+        "formatter_agent":formatter_agent
+    }
+
+   
+
+@handle_rate_limit
+def process_with_smolagents(smolagents_system, user_message):
+    """Process user message with autonomous SmolAgents multi-agent system"""
+    try:
+        # Use the manager agent to autonomously decide which agent to call
+        manager_agent = smolagents_system["manager_agent"]
+        
+        prompt = f"""
+        Customer Request: {user_message}
+        
+        You are a manager agent responsible for autonomously deciding which specialized agent to call based on the customer's request.
+        
+        You have access to two managed agents:
+        1. refund_agent: verifies refund eligibility and, if eligible, processes the refund and sends a professional email response.
+        2. support_agent: Support agent that answers user queries by searching company documents, provides step-by-step answers, and never reveals the document source to the user.
+        
+        Analyze the customer's request and autonomously decide which agent is best suited to handle their inquiry.
+        Consider the nature of the request, the customer's needs, and the capabilities of each agent.
+        
+        IMPORTANT: 
+        - Make an intelligent, autonomous decision about which agent to call
+        - Do not use simple keyword matching - analyze the actual intent and context
+        - The chosen agent will format the response as a professional email
+        - Return ONLY the final response from the chosen agent, not your reasoning
+        - Do not add any additional text or explanations
+        
+        MANAGED AGENT CAPABILITIES:
+        - refund_agent: verifies refund eligibility and, if eligible, processes the refund and sends a professional email response.
+        - support_agent: Support agent that answers user queries by searching company documents, provides step-by-step answers, and never reveals the document source to the user.
+        
+        Execute the appropriate managed agent to handle this customer request and return their response directly.
+        """
+        
+        # Run the manager agent which will autonomously decide and call the appropriate agent
+        result = manager_agent.run(prompt)
+
+        print(f"[DEBUG] Final email_content: {result[:500]}")   
+        
+        # # Extract the response - handle different response types
+        # response_text = ""
+        # if hasattr(result, 'content'):
+        #     response_text = result.content
+        # elif hasattr(result, 'message'):
+        #     response_text = result.message
+        # elif hasattr(result, 'text'):
+        #     response_text = result.text
+        # elif isinstance(result, str):
+        #     response_text = result
+        # else:
+        #     response_text = str(result)
+        
+        # # --- Post-processing for customer-facing email ---
+        # # Remove 'Task outcome' headers and meta-comments, extract main answer
+        # import re
+        
+        # # Remove 'Task outcome' headers
+        # response_text = re.sub(r"#+ ?[0-9]?\.?( )?Task outcome.*?:", "", response_text, flags=re.IGNORECASE)
+        # response_text = re.sub(r"#+ ?[0-9]?\.?( )?Additional context.*?:", "", response_text, flags=re.IGNORECASE)
+        # response_text = re.sub(r"Final answer:.*", "", response_text, flags=re.IGNORECASE)
+        # response_text = re.sub(r"Here is the final answer from your managed agent.*?:", "", response_text, flags=re.IGNORECASE)
+        
+        # # Remove meta-comments about using the document search tool again
+        # response_text = re.sub(r"I can use the document search tool again[^]*", "", response_text, flags=re.IGNORECASE)
+        # response_text = re.sub(r"It would be helpful to investigate[^]*", "", response_text, flags=re.IGNORECASE)
+        
+        # # Remove any excessive blank lines
+        # response_text = re.sub(r"\n{3,}", "\n\n", response_text)
+        # response_text = response_text.strip()
+        
+        # Format as a proper email
+        
+        return result
+            
+    except Exception as e:
+        return f"Dear Customer,\n\nI apologize for the technical difficulty. Please try rephrasing your request or contact our support team for immediate assistance.\n\nBest regards,\nTechCorps Support Agent"
+
+
+def format_with_smolagents(smolagents_system, user_message):
+    """Format the response from the manager agent into a professional email response with proper start and end."""
+    prompt = f"""You are a professional email formatting specialist. Your role is to format the following given raw responses from support agents into polished, professional customer service emails.
+
+FORMATTING GUIDELINES:
+1. Structure the email with proper greeting, body, and closing
+2. Ensure professional tone and clear communication
+3. Remove any technical jargon or internal references
+4. Clean up formatting issues and improve readability
+5. Maintain the core message while enhancing presentation
+6. Add appropriate context when needed
+7. Ensure empathy and customer-centric language
+
+EMAIL STRUCTURE:
+- Greeting: "Dear [Customer Name]," or "Dear Customer," if name not provided
+- Body: Well-formatted content with proper paragraphs and spacing
+- Closing: "Best regards,\nTechCorps Support Team"
+
+FORMATTING RULES:
+- Remove debug text, tool references, or internal process mentions
+- Fix grammar, punctuation, and spacing issues
+- Break up long paragraphs for better readability
+- Use bullet points or numbered lists for step-by-step instructions
+- Ensure proper capitalization and professional language
+- Remove redundant information
+- Add transitional phrases for better flow
+
+TONE REQUIREMENTS:
+- Professional yet friendly
+- Empathetic to customer concerns
+- Clear and concise
+- Helpful and solution-oriented
+- Apologetic when appropriate
+
+Raw Response: {user_message}
+"""
+    return smolagents_system["formatter_agent"].run(prompt)
 
 class NodeFunctions:
     
@@ -15,261 +258,79 @@ class NodeFunctions:
         self.refund_llm = models.get("refund_llm")
         self.issue_faq_llm = models.get("issue_faq_llm")
         
-        self.refund_tools = get_refund_tools()
-        self.refund_llm_with_tools = self.refund_llm.bind_tools(self.refund_tools)
-        
-        self.document_search_tools = get_document_search_tools()
-        self.issue_faq_llm_with_tools = self.issue_faq_llm.bind_tools(self.document_search_tools)
-        
-        self.refund_tool_node = ToolNode(self.refund_tools)
-        self.document_search_tool_node = ToolNode(self.document_search_tools)
+        # Initialize SmolAgents multi-agent system
+        self.smolagents_system = create_smolagents_system(models)
     
     def router_agent(self, state: SupportState) -> dict:
+        """Use autonomous SmolAgents multi-agent system for intelligent processing"""
         user_message = state.get("user_message", "")
         
-        previous_query_type = state.get("query_type", "")
-        customer_info = state.get("customer_info", {})
-        
-        context_info = ""
-        is_followup = False
-        
-        if (previous_query_type == "refund" or 
-            customer_info.get("order_id") or 
-            customer_info.get("email") or
-            any(keyword in user_message.lower() for keyword in ["order", "email", "refund", "money back", "cancel"])):
-            is_followup = True
-            context_info = "\n\nCONTEXT: This appears to be a follow-up message in a refund conversation. Previous information indicates this is a refund request."
-        
-        prompt = f"{ROUTER_SYSTEM_PROMPT}\n\nCurrent User Message: \"{user_message}\"{context_info}\n\nIMPORTANT CLASSIFICATION RULES:\n1. If this message contains order numbers, emails, or appears to be continuing a refund conversation, classify it as 'refund'\n2. If this message is providing additional information for a refund request, classify it as 'refund'\n3. If this message is a standalone question about policies or general information, classify it as 'faq'\n4. If this message describes technical problems or errors, classify it as 'issue'\n\nPlease classify this customer query and respond with the JSON format specified above."
-        
         try:
-            response = self.router_llm.invoke(prompt)
-            if hasattr(response, 'content'):
-                response_content = response.content
-            else:
-                response_content = str(response)
+            # Use the SmolAgents manager agent to autonomously process the message
+            response_content = process_with_smolagents(self.smolagents_system, user_message)
             
-            try:
-                result = json.loads(response_content)
-            except json.JSONDecodeError:
-                import re
-                json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
-                if json_match:
-                    try:
-                        extracted_json = json_match.group(0)
-                        result = json.loads(extracted_json)
-                    except json.JSONDecodeError:
-                        result = {"query_type": "faq", "classification": "General inquiry", "customer_info": {}}
-                else:
-                    result = {"query_type": "faq", "classification": "General inquiry", "customer_info": {}}
+            # Extract customer info using regex (this is still useful for state tracking)
+            customer_info = {}
+            if "order" in user_message.lower():
+                order_match = re.search(r'order[:\s#]*([A-Z0-9-]+)', user_message, re.IGNORECASE)
+                if order_match:
+                    customer_info["order_id"] = order_match.group(1)
             
+            if "@" in user_message:
+                email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', user_message)
+                if email_match:
+                    customer_info["email"] = email_match.group(0)
+            
+            # Update state with autonomous SmolAgents results
             state.update({
-                "query_type": result.get("query_type", "faq"),
-                "customer_info": result.get("customer_info", {})
+                "query_type": "autonomous",  # Let the manager agent decide
+                "customer_info": customer_info,
+                "autonomous_decision": f"Manager agent autonomously orchestrated multi-agent system",
+                "final_response": response_content,
+                "resolved": True
+            })
+            
+            # Record autonomous agent decisions
+            state["agent_decisions"].append({
+                "agent": "Manager_Agent",
+                "decision": "autonomous_orchestration",
+                "reasoning": "Intelligent analysis and autonomous agent selection",
+                "timestamp": "now"
+            })
+            
+        except Exception as e:
+            # Fallback response
+            state.update({
+                "query_type": "autonomous",
+                "customer_info": {},
+                "autonomous_decision": f"Manager agent error: {str(e)}",
+                "final_response": f"Dear Customer, I apologize for the technical difficulty. Please try rephrasing your request or contact our support team for immediate assistance. Best regards, TechCorps Support Agent"
             })
         
-        except Exception as e:
-            state.update({"query_type": "faq"})
-        
+        return state
+    
+    def formatter_agent(self, state: SupportState) -> dict:
+        """Formatter agent that formats the response from the manager agent into a professional email response with proper start and end."""
+        final_response = state.get("final_response", "")
+        formatted_email = format_with_smolagents(self.smolagents_system, final_response)
+        print("DEBUG: FINAL GENERATED EMAIL: ",formatted_email)
+        state.update({
+            "final_email": formatted_email
+        })
         return state
     
     def refund_node(self, state: SupportState) -> SupportState:
-        customer_info = state.get("customer_info", {})
-        order_id = customer_info.get("order_id", "unknown")
-        email = customer_info.get("email", "unknown")
-        conversation_context = f"Customer Message: {state.get('user_message', '')}\nOrder ID: {order_id}\nCustomer Email: {email}\n"
-        verification_result = state.get("verification_result")
-        processing_result = state.get("processing_result")
-        if verification_result:
-            conversation_context += f"\nVerification Result: {json.dumps(verification_result, indent=2)}\n"
-        if processing_result:
-            conversation_context += f"\nProcessing Result: {json.dumps(processing_result, indent=2)}\n"
-        if not verification_result:
-            action_needed = "VERIFICATION"
-            prompt_context = "You need to verify the refund request. Call the refund_verification_tool."
-        elif verification_result and verification_result.get("verified") and not processing_result:
-            action_needed = "PROCESSING"
-            prompt_context = "Verification is complete and successful. Now call the refund_processing_tool to process the refund."
-        elif verification_result and not verification_result.get("verified"):
-            action_needed = "FINAL_ANSWER"
-            prompt_context = "Verification failed. Generate a final customer response explaining why the refund cannot be processed."
-        else:
-            action_needed = "FINAL_ANSWER"
-            prompt_context = "Both verification and processing are complete. Generate a final customer response with the refund details."
-        prompt = f"{REFUND_SYSTEM_PROMPT}\n\nCURRENT STATE:\n{conversation_context}\nACTION REQUIRED: {action_needed}\n{prompt_context}\n\nCRITICAL RULES:\n- If action is VERIFICATION: Call ONLY refund_verification_tool\n- If action is PROCESSING: Call ONLY refund_processing_tool\n- If action is FINAL_ANSWER: Generate a customer response, NO tool calls\n- NEVER call multiple tools at once\n- NEVER call a tool that has already been executed\n- If verification_result exists, DO NOT call verification tool again\n- If processing_result exists, DO NOT call processing tool again\n\nAVAILABLE TOOLS:\n- refund_verification_tool: Verify customer and order eligibility\n- refund_processing_tool: Process the actual refund\n\nRESPONSE FORMAT:\n- For tool calls: Use the exact tool name and provide required arguments\n- For final answers: Provide a clear, helpful response to the customer\n\nCustomer Query: {state.get('user_message', '')}"
-        try:
-            if action_needed in ["VERIFICATION", "PROCESSING"]:
-                response = self.refund_llm_with_tools.invoke(prompt)
-            else:
-                response = self.refund_llm.invoke(prompt)
-            tool_calls_present = hasattr(response, 'tool_calls') and response.tool_calls
-            if tool_calls_present:
-                state["last_llm_response"] = response
-            else:
-                state["last_llm_response"] = None
-                response_content = response.content if hasattr(response, 'content') else str(response)
-                cleaned_response = self._clean_response(response_content)
-                state["final_response"] = cleaned_response
-                state["resolved"] = True
-        except Exception as e:
-            state["tool_execution_error"] = f"Error processing refund: {str(e)}"
-        return state
-
-    def execute_refund_tools(self, state: SupportState) -> SupportState:
-        last_llm_response = state.get("last_llm_response")
-        
-        if not last_llm_response or not hasattr(last_llm_response, "tool_calls") or not last_llm_response.tool_calls:
-            return state
-        
-        try:
-            verification_result = state.get("verification_result")
-            processing_result = state.get("processing_result")
-            
-            allowed_tool = None
-            if not verification_result:
-                allowed_tool = "refund_verification_tool"
-            elif verification_result and verification_result.get("verified") and not processing_result:
-                allowed_tool = "refund_processing_tool"
-            
-            if not allowed_tool:
-                return state
-            
-            filtered_tool_calls = [tc for tc in last_llm_response.tool_calls if tc["name"] == allowed_tool]
-            
-            if not filtered_tool_calls:
-                return state
-            
-            from langchain_core.messages import AIMessage
-            
-            allowed_tool_call = filtered_tool_calls[0]
-            
-            filtered_ai_message = AIMessage(
-                content="",
-                tool_calls=[allowed_tool_call]
-            )
-            tool_state = {"messages": [filtered_ai_message]}
-            tool_response = self.refund_tool_node.invoke(tool_state)
-            
-            for msg in tool_response["messages"]:
-                if hasattr(msg, "name"):
-                    if msg.name == "refund_verification_tool":
-                        state["verification_result"] = json.loads(msg.content)
-                    elif msg.name == "refund_processing_tool":
-                        state["processing_result"] = json.loads(msg.content)
-            
-            state["last_llm_response"] = None
-            
-        except Exception as e:
-            state["tool_execution_error"] = str(e)
-        
+        """SmolAgents handles refund processing in the router_agent"""
         return state
     
     def non_refund_node(self, state: SupportState) -> SupportState:
-        user_message = state.get("user_message", "")
-        query_type = state.get("query_type", "faq")
-        search_results = state.get("search_results", [])
-        subquestions = state.get("subquestions", [])
-        if search_results and not state.get("final_response"):
-            prompt = self._create_final_answer_prompt(user_message, query_type, search_results, subquestions)
-            try:
-                response = self.issue_faq_llm.invoke(prompt)
-                response_content = response.content if hasattr(response, 'content') else str(response)
-                cleaned_response = self._clean_response(response_content)
-                state["final_response"] = cleaned_response
-                state["resolved"] = True
-                return state
-            except Exception as e:
-                state["tool_execution_error"] = f"Error generating final answer: {str(e)}"
-                return state
-        prompt = self._create_subquestion_prompt(user_message, query_type)
-        try:
-            response = self.issue_faq_llm_with_tools.invoke(prompt)
-            tool_calls_present = hasattr(response, 'tool_calls') and response.tool_calls
-            if tool_calls_present:
-                state["last_llm_response"] = response
-            else:
-                response_content = response.content if hasattr(response, 'content') else str(response)
-                if "escalate" in response_content.lower() or "human" in response_content.lower():
-                    state["escalation_required"] = True
-                    state["final_response"] = response_content
-                else:
-                    state["final_response"] = response_content
-                    state["resolved"] = True
-        except Exception as e:
-            state["tool_execution_error"] = f"Error processing {query_type} query: {str(e)}"
+        """SmolAgents handles support processing in the router_agent"""
+        return state
+    
+    def execute_refund_tools(self, state: SupportState) -> SupportState:
+        """SmolAgents handles tool execution autonomously"""
         return state
     
     def execute_rag_tools(self, state: SupportState) -> SupportState:
-        last_llm_response = state.get("last_llm_response")
-        
-        if not last_llm_response or not hasattr(last_llm_response, "tool_calls") or not last_llm_response.tool_calls:
-            return state
-        
-        try:
-            from langchain_core.messages import AIMessage
-            
-            ai_message = AIMessage(
-                content="",
-                tool_calls=last_llm_response.tool_calls
-            )
-            
-            tool_state = {"messages": [ai_message]}
-            tool_response = self.document_search_tool_node.invoke(tool_state)
-            
-            search_results = []
-            subquestions = []
-            
-            for msg in tool_response["messages"]:
-                if hasattr(msg, "name") and msg.name == "document_search_tool":
-                    try:
-                        search_data = json.loads(msg.content)
-                        if search_data.get("success"):
-                            search_results.extend(search_data.get("results", []))
-                            subquestions.append(search_data.get("query", ""))
-                    except json.JSONDecodeError:
-                        pass
-            
-            state["search_results"] = search_results
-            state["subquestions"] = subquestions
-            state["last_llm_response"] = None
-            
-            if not search_results:
-                state["escalation_required"] = True
-                state["final_response"] = "I couldn't find relevant information to answer your question. Let me connect you with a human agent who can help you better."
-            
-        except Exception as e:
-            state["tool_execution_error"] = str(e)
-            state["escalation_required"] = True
-            state["final_response"] = "I encountered an error while searching for information. Let me connect you with a human agent."
-        
+        """SmolAgents handles RAG tool execution autonomously"""
         return state
-    
-    def _create_subquestion_prompt(self, user_message: str, query_type: str) -> str:
-        return f"{NON_REFUND_SYSTEM_PROMPT}\n\nTASK: Analyze the customer query and break it down into specific subquestions, then search for each one.\nCUSTOMER QUERY: \"{user_message}\"\nQUERY TYPE: {query_type}\nINSTRUCTIONS: 1. Analyze the customer query carefully 2. Break it down into specific searchable subquestions if it contains multiple parts 3. For each subquestion, call the document_search_tool with a clear, specific search query 4. If the query is simple and direct, make one targeted search 5. If no relevant information can be found, recommend escalation to human\nSEARCH STRATEGY: Use specific, relevant keywords for each search. Focus on the core problem or question. Include product names, error codes, or specific terms mentioned. Search for troubleshooting steps, procedures, or explanations.\nEXAMPLES: For 'My TechOffice Suite won't install and shows error 1603': Search for: 'TechOffice Suite installation error 1603'. For 'How do I reset my password and change my email?': Search 1: 'reset password procedure', Search 2: 'change email address account'. Now analyze the customer query and perform the appropriate searches:"
-
-    def _create_final_answer_prompt(self, user_message: str, query_type: str, search_results: List[Dict], subquestions: List[str]) -> str:
-        formatted_results = ""
-        for i, result in enumerate(search_results, 1):
-            formatted_results += f"\nResult {i}:\nContent: {result.get('content', '')}\nSource: {result.get('source', 'unknown')}\nRelevance Score: {result.get('similarity_score', 0):.3f}\n---"
-        subqs_text = "\n".join(f"- {sq}" for sq in subquestions)
-        return f"{NON_REFUND_SYSTEM_PROMPT}\n\nTASK: Generate a comprehensive, helpful answer for the customer based on the search results.\nORIGINAL CUSTOMER QUERY: \"{user_message}\"\nQUERY TYPE: {query_type}\nSUBQUESTIONS ANALYZED:\n{subqs_text}\nSEARCH RESULTS FOUND:\n{formatted_results}\nINSTRUCTIONS: 1. Synthesize the search results into a clear, helpful response 2. Address all parts of the customer's original question 3. Provide step-by-step instructions when applicable 4. Include relevant details from the search results 5. Be empathetic and professional 6. If the search results don't fully answer the question, acknowledge limitations 7. If critical information is missing, recommend escalation to human support RESPONSE REQUIREMENTS: Start with acknowledgment of the customer's issue. Provide clear, actionable steps or information. Reference specific details from search results when helpful. End with offer for further assistance. Keep response concise but comprehensive. Use friendly, professional tone. Do not mention what documents were searched or list search results. IMPORTANT: Do not include any thinking, reasoning, or internal thoughts in your response. Provide only the direct, helpful response to the customer. Generate the final customer response:"
-
-    def _clean_response(self, response: str) -> str:
-        import re
-
-        response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
-        thinking_patterns = [
-            r'Okay, let\'s tackle.*?First, I need to.*?',
-            r'Let me think about.*?',
-            r'I need to analyze.*?',
-            r'Looking at this.*?',
-            r'Based on my analysis.*?',
-            r'Let me break this down.*?'
-        ]
-        
-        for pattern in thinking_patterns:
-            response = re.sub(pattern, '', response, flags=re.DOTALL | re.IGNORECASE)
-        response = re.sub(r'\n\s*\n\s*\n', '\n\n', response)
-        response = response.strip()
-    
-        return response

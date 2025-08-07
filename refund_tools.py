@@ -92,7 +92,7 @@ refund_processor = RefundProcessor()
 
 @tool
 def refund_verification_tool(order_id: str, customer_email: str = None) -> str:
-    """Verify refund eligibility before processing."""
+    """Verify refund eligibility before processing. Returns JSON with 'verified' field that MUST be checked before proceeding."""
     if not order_id:
         return json.dumps({"verified": False, "error": "Missing order_id"})
     
@@ -105,7 +105,7 @@ def refund_verification_tool(order_id: str, customer_email: str = None) -> str:
 
 @tool  
 def refund_processing_tool(order_id: str) -> str:
-    """Execute actual refund processing after verification."""
+    """Execute actual refund processing after verification. ONLY call this after successful verification."""
     if not order_id:
         return json.dumps({"success": False, "error": "Missing order_id"})
     

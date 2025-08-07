@@ -12,6 +12,7 @@ class SupportState(TypedDict):
     customer_info: Dict[str, Any]
     resolved: bool
     final_response: Optional[str]
+    final_email: str
     session_id: str
     last_llm_response: Optional[Any]
     tool_execution_error: Optional[str]
@@ -20,6 +21,9 @@ class SupportState(TypedDict):
     search_results: List[Dict[str, Any]]
     subquestions: List[str]
     escalation_required: bool
+    autonomous_decision: Optional[str]
+    agent_decisions: List[Dict[str, Any]]
+    conversation_history: List[Dict[str, str]]
 
 def create_initial_state(user_message: str, session_id: str) -> SupportState:
     return SupportState(
@@ -28,6 +32,7 @@ def create_initial_state(user_message: str, session_id: str) -> SupportState:
         customer_info={},
         resolved=False,
         final_response=None,
+        final_email=None,
         session_id=session_id,
         last_llm_response=None,
         tool_execution_error=None,
@@ -35,5 +40,8 @@ def create_initial_state(user_message: str, session_id: str) -> SupportState:
         processing_result=None,
         search_results=[],
         subquestions=[],
-        escalation_required=False
+        escalation_required=False,
+        autonomous_decision=None,
+        agent_decisions=[],
+        conversation_history=[]
     )

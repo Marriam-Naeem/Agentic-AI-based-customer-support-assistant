@@ -70,7 +70,7 @@ class SemanticTextSplitter:
             for i, chunk_text in enumerate(text_chunks):
                 if chunk_text.strip():
                     chunks.append({
-                        "content": chunk_text,  # Return as-is without strip()
+                        "content": chunk_text, # Return as-is without strip()
                         "metadata": {
                             "source": source, "file_name": os.path.basename(source),
                             "file_type": file_type, "chunk_index": i,
@@ -86,7 +86,7 @@ class SemanticTextSplitter:
 class RAGSystem:
     def __init__(self):
         self.persist_directory = CHROMA_PERSIST_DIR
-        self.semantic_persist_directory = os.path.join(os.path.dirname(CHROMA_PERSIST_DIR), "semantic_vector_store")
+        self.semantic_persist_directory = os.path.join(os.path.dirname(self.persist_directory), "semantic_vector_store")
         self.text_splitter = SimpleTextSplitter(RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP)
         self.embeddings = self._get_embeddings()
         self.vectorstore = None
@@ -374,39 +374,52 @@ class RAGSystem:
                 print(f"Error indexing semantic documents: {e}")
                 self.semantic_initialized = False
     
-    def search_documents(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+    def search_documents(self, query: str, k: int = 2) -> List[Dict[str, Any]]:
         try:
             if not self.vectorstore or not self.is_initialized:
                 return []
-            results = self.vectorstore.similarity_search_with_score(query, k=k)
-            formatted_results = []
-            for doc, score in results:
-                formatted_results.append({
-                    "content": doc.page_content, "metadata": doc.metadata,
-                    "similarity_score": float(score), "source": doc.metadata.get("source", "unknown"),
-                    "file_name": doc.metadata.get("file_name", "unknown"),
-                    "file_type": doc.metadata.get("file_type", "unknown")
-                })
-            return formatted_results
-        except Exception:
-            return []
-    
-    def search_documents_semantic(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
-        try:
-            if not self.semantic_vectorstore or not self.semantic_initialized:
-                return []
-            results = self.semantic_vectorstore.similarity_search_with_score(query, k=k)
-            formatted_results = []
-            for doc, score in results:
-                formatted_results.append({
-                    "content": doc.page_content, "metadata": doc.metadata,
-                    "similarity_score": float(score), "source": doc.metadata.get("source", "unknown"),
-                    "file_name": doc.metadata.get("file_name", "unknown"),
-                    "file_type": doc.metadata.get("file_type", "unknown"),
-                    "chunk_type": "semantic"
-                })
-            return formatted_results
-        except Exception:
+            
+            # Start with k documents and increase if needed to get distinct ones
+            docs_to_retrieve = k
+            max_attempts = k * 3  # Limit attempts to avoid infinite loop
+            
+            for attempt in range(max_attempts):
+                # Use the proper LangChain retriever pattern
+                retriever = self.vectorstore.as_retriever(
+                    search_type="similarity",
+                    search_kwargs={"k": docs_to_retrieve}
+                )
+                
+                # Get documents using the retriever
+                docs = retriever.invoke(query)
+                
+                # Deduplicate based on source file to get distinct documents
+                seen_sources = set()
+                distinct_results = []
+                
+                for doc in docs:
+                    source = doc.metadata.get("source", "unknown")
+                    if source not in seen_sources and len(distinct_results) < k:
+                        seen_sources.add(source)
+                        distinct_results.append({
+                            "content": doc.page_content, "metadata": doc.metadata,
+                            "source": doc.metadata.get("source", "unknown"),
+                            "file_name": doc.metadata.get("file_name", "unknown"),
+                            "file_type": doc.metadata.get("file_type", "unknown")
+                        })
+                
+                # If we got enough distinct documents, return them
+                if len(distinct_results) >= k:
+                    return distinct_results
+                
+                # If not enough distinct documents, try retrieving more
+                docs_to_retrieve += k
+            
+            # If we still don't have enough distinct documents, return what we have
+            return distinct_results
+            
+        except Exception as e:
+            print(f"Error in search_documents: {e}")
             return []
 
 
@@ -420,105 +433,50 @@ def get_rag_system():
 
 
 @tool
-def document_search_tool(query: str, max_results: int = 5) -> str:
-    """Search through company documents using vector similarity."""
+def document_search_tool(query: str, max_results: int = 2) -> str:
+    """Search through company documents using vector similarity from the configured vector store path.
+    
+    Args:
+        query: The search query to find relevant documents
+        max_results: Maximum number of results to return (default: 2)
+    """
     try:
         if not query.strip():
-            return json.dumps({"success": False, "error": "Empty search query provided"})
+            return "No search query provided. Please provide a valid search term."
+        
+        # Ensure max_results is within reasonable bounds
+        max_results = min(max(1, max_results), 10)  # Between 1 and 10
         
         rag_system = get_rag_system()
         results = rag_system.search_documents(query, k=max_results)
         
         if not results:
-            return json.dumps({
-                "success": False, "message": "No relevant documents found",
-                "query": query, "results": []
-            })
+            return f"No relevant documents found for the query: '{query}'. Please try rephrasing your search or contact support for assistance."
         
-        formatted_results = [{
-            "content": result["content"], "source": result["source"],
-            "file_name": result["file_name"], "file_type": result["file_type"],
-            "similarity_score": result["similarity_score"]
-        } for result in results]
+        # Format results for LLM consumption
+        formatted_response = f"Found {len(results)} relevant document(s) for query: '{query}'\n\n"
         
-        # Pretty print retrieved context to console
-        print("\n" + "="*80)
-        print("RETRIEVED CONTEXT FOR EXAMINATION")
-        print("="*80)
-        print(f"Query: {query}")
-        print(f"Results found: {len(formatted_results)}")
-        print("="*80 + "\n")
+        for i, result in enumerate(results, 1):
+            source_info = result.get('source', 'Unknown source')
+            file_name = result.get('file_name', 'Unknown file')
+            file_type = result.get('file_type', 'Unknown type')
+            content = result.get('content', 'No content available')
+            
+            formatted_response += f"Document {i}:\n"
+            formatted_response += f"Source: {source_info}\n"
+            formatted_response += f"File: {file_name} ({file_type})\n"
+            formatted_response += f"Content: {content}\n"
+            formatted_response += "-" * 80 + "\n\n"
         
-        for i, result in enumerate(formatted_results, 1):
-            print(f"Result {i}")
-            print(f"Source: {result.get('source', 'Unknown')}")
-            print(f"File: {result.get('file_name', 'Unknown')}")
-            print(f"Type: {result.get('file_type', 'Unknown')}")
-            print(f"Relevance Score: {result.get('similarity_score', 0):.4f}")
-            print("-" * 60)
-            print(f"Content:")
-            print(result.get('content', 'No content available'))
-            print("="*80 + "\n")
+        # Add summary for LLM
+        formatted_response += f"Total documents retrieved: {len(results)}\n"
+        formatted_response += "Use the content above to provide accurate information to the customer based on our company documents."
         
-        return json.dumps({
-            "success": True, "query": query,
-            "results_count": len(formatted_results), "results": formatted_results
-        }, indent=2)
+        return formatted_response
     
     except Exception as e:
-        return json.dumps({"success": False, "error": str(e), "query": query})
-
-
-@tool
-def semantic_document_search_tool(query: str, max_results: int = 5) -> str:
-    """Search through company documents using semantic chunking and vector similarity."""
-    try:
-        if not query.strip():
-            return json.dumps({"success": False, "error": "Empty search query provided"})
-        
-        rag_system = get_rag_system()
-        results = rag_system.search_documents_semantic(query, k=max_results)
-        
-        if not results:
-            return json.dumps({
-                "success": False, "message": "No relevant semantic documents found",
-                "query": query, "results": []
-            })
-        
-        formatted_results = [{
-            "content": result["content"], "source": result["source"],
-            "file_name": result["file_name"], "file_type": result["file_type"],
-            "similarity_score": result["similarity_score"], "chunk_type": "semantic"
-        } for result in results]
-        
-        # Pretty print retrieved context to console
-        print("\n" + "="*80)
-        print("SEMANTIC RETRIEVED CONTEXT FOR EXAMINATION")
-        print("="*80)
-        print(f"Query: {query}")
-        print(f"Results found: {len(formatted_results)}")
-        print("="*80 + "\n")
-        
-        for i, result in enumerate(formatted_results, 1):
-            print(f"Semantic Result {i}")
-            print(f"Source: {result.get('source', 'Unknown')}")
-            print(f"File: {result.get('file_name', 'Unknown')}")
-            print(f"Type: {result.get('file_type', 'Unknown')}")
-            print(f"Relevance Score: {result.get('similarity_score', 0):.4f}")
-            print(f"Chunk Type: {result.get('chunk_type', 'semantic')}")
-            print("-" * 60)
-            print(f"Content:")
-            print(result.get('content', 'No content available'))
-            print("="*80 + "\n")
-        
-        return json.dumps({
-            "success": True, "query": query,
-            "results_count": len(formatted_results), "results": formatted_results
-        }, indent=2)
-    
-    except Exception as e:
-        return json.dumps({"success": False, "error": str(e), "query": query})
+        return f"Error occurred while searching documents: {str(e)}. Please try again or contact support."
 
 
 def get_document_search_tools():
-    return [document_search_tool, semantic_document_search_tool]
+    return [document_search_tool]
