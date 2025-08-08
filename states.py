@@ -1,10 +1,4 @@
 from typing import TypedDict, Optional, List, Dict, Any
-from enum import Enum
-
-class QueryType(str, Enum):
-    REFUND = "refund"
-    ISSUE = "issue" 
-    FAQ = "faq"
 
 class SupportState(TypedDict):
     user_message: str

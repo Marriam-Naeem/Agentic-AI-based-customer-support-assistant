@@ -1,9 +1,6 @@
-from typing import Dict, Any, Union
-import litellm  # Add this missing import
+from typing import Dict, Any
 from smolagents import OpenAIServerModel
-from settings import GROQ_API_KEY, SMALL_MODEL, LARGE_MODEL, HUGGINGFACE_TOKEN, GEMINI_API_KEY
-from ollamaModel import OllamaLLM
-from langchain_community.llms import Ollama
+from settings import GEMINI_API_KEY, RATE_LIMIT_KEYWORDS, RATE_LIMIT_RESPONSE
 import time
 import random
 
@@ -16,13 +13,25 @@ except ImportError:
 
 class SmolAgentsLLMManager:
     def __init__(self):
-        # Use Groq directly without fallback
+        # Use Gemini directly without fallback
         print("Using Gemini Models")
         try:
             self.models = {
-                "router": OpenAIServerModel(model_id="gemini-1.5-flash", api_base="https://generativelanguage.googleapis.com/v1beta/openai/",api_key=GEMINI_API_KEY,),
-                "refund": OpenAIServerModel(model_id="gemini-1.5-flash", api_base="https://generativelanguage.googleapis.com/v1beta/openai/",api_key=GEMINI_API_KEY,),
-                "issue_faq": OpenAIServerModel(model_id="gemini-1.5-flash", api_base="https://generativelanguage.googleapis.com/v1beta/openai/",api_key=GEMINI_API_KEY,),
+                "router": OpenAIServerModel(
+                    model_id="gemini-2.0-flash-lite", 
+                    api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
+                    api_key=GEMINI_API_KEY,
+                ),
+                "refund": OpenAIServerModel(
+                    model_id="gemini-2.0-flash-lite", 
+                    api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
+                    api_key=GEMINI_API_KEY,
+                ),
+                "issue_faq": OpenAIServerModel(
+                    model_id="gemini-2.0-flash-lite", 
+                    api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
+                    api_key=GEMINI_API_KEY,
+                ),
             }
             print("Models loaded successfully")
         except Exception as e:
@@ -54,6 +63,34 @@ class EmbeddingManager:
         return self.embeddings
 
 
+def handle_rate_limit_error(func):
+    """Decorator to handle rate limiting with exponential backoff for LLM setup"""
+    def wrapper(*args, **kwargs):
+        max_retries = 3
+        base_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                error_str = str(e).lower()
+                is_rate_limit = any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS)
+                
+                if is_rate_limit and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    print(f"Rate limit hit during setup, waiting {delay:.1f} seconds before retry {attempt + 1}/{max_retries}")
+                    time.sleep(delay)
+                    continue
+                elif is_rate_limit:
+                    print(f"Rate limit exceeded during setup after {max_retries} attempts.")
+                    return None
+                else:
+                    raise e
+        return func(*args, **kwargs)
+    return wrapper
+
+
+@handle_rate_limit_error
 def setup_llm_models() -> Dict[str, Any]:
     try:
         llm_manager = SmolAgentsLLMManager()
@@ -68,6 +105,7 @@ def setup_llm_models() -> Dict[str, Any]:
         raise
 
 
+@handle_rate_limit_error
 def setup_embedding_model():
     try:
         return EmbeddingManager().get_embeddings()

@@ -7,6 +7,7 @@ import uuid
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from graph import graph
 from states import create_initial_state
+from settings import RATE_LIMIT_RESPONSE, FALLBACK_RESPONSE
 
 
 class ChatbotInterface:
@@ -25,7 +26,11 @@ class ChatbotInterface:
             history.append([message, self._extract_response(result)])
             return "", history
         except Exception as e:
-            history.append([message, f"Sorry, I encountered an error while processing your request: {str(e)}"])
+            error_message = str(e).lower()
+            if any(keyword in error_message for keyword in ["rate_limit", "quota", "resource_exhausted", "429"]):
+                history.append([message, RATE_LIMIT_RESPONSE])
+            else:
+                history.append([message, f"Sorry, I encountered an error while processing your request: {str(e)}"])
             return "", history
     
     def clear_session(self) -> Tuple[str, List[List[str]]]:
