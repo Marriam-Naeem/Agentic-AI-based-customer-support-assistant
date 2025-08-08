@@ -40,9 +40,8 @@ customer-support-assistant/
    Create `.env` file:
    ```bash
    GROQ_API_KEY=your_api_key
-   HUGGINGFACE_TOKEN=your_token  # for SmolAgents
-   SMALL_MODEL=llama-3.1-70b-versatile
-   LARGE_MODEL=llama-3.1-70b-versatile
+   HUGGINGFACE_TOKEN=your_token 
+   GEMINI_API_KEY=your key
    ```
 
 3. **Run the application**
