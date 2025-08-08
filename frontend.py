@@ -7,7 +7,7 @@ import uuid
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from graph import graph
 from states import create_initial_state
-from settings import RATE_LIMIT_RESPONSE, FALLBACK_RESPONSE
+from settings import RATE_LIMIT_RESPONSE
 
 
 class ChatbotInterface:
@@ -39,33 +39,16 @@ class ChatbotInterface:
         return "", []
     
     def _extract_response(self, result: dict) -> str:
-        # Debug print to see what we're getting
-        print(f"DEBUG: Result keys: {result.keys()}")
-        if result.get("final_email"):
-            print(f"DEBUG: final_email found: {result['final_email'][:100]}...")
-        
-        # If final_email exists, display it directly (it's already properly formatted)
+        # Return the final email if available, otherwise a generic response
         if result.get("final_email"):
             return result["final_email"]
         
-        # Fallback responses for other cases
-        if result.get("error"):
-            return f"❌ **Error**: {result['error']}"
-        elif result.get("escalation_required"):
-            return f"⚠️ **Escalation Required**\n\n{result.get('escalation_reason', 'Complex issue detected')}\n\nYour request has been escalated to a human agent who will contact you soon."
-        elif result.get("processing_result"):
-            return f"✅ **Refund Processed Successfully**\n\n{result['processing_result'].get('message', 'Your refund has been processed.')}"
-        elif result.get("verification_result"):
-            verification = result["verification_result"]
-            if verification.get("verified"):
-                return f"✅ **Order Verified**\n\n{verification.get('message', 'Your order has been verified and is being processed.')}"
-            else:
-                return f"❌ **Verification Failed**\n\n{verification.get('message', 'We could not verify your order. Please check your order number and email.')}"
-        elif result.get("search_results"):
-            return "I found some information but couldn't format it properly. Please try asking your question again."
-        else:
-            print(f"DEBUG: Falling back to generic response. Result: {result}")
-            return f"I've processed your {result.get('query_type', 'unknown')} request. Please provide more details if you need specific assistance."
+        # Fallback to final_response if available
+        if result.get("final_response"):
+            return result["final_response"]
+        
+        # Generic fallback
+        return "I've processed your request. Please let me know if you need any clarification."
 
 
 def create_chatbot_interface():
