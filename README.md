@@ -39,12 +39,14 @@ customer-support-assistant/
 2. **Environment variables**
    Create `.env` file:
    ```bash
-   GROQ_API_KEY=your_api_key
-   HUGGINGFACE_TOKEN=your_token 
-   GEMINI_API_KEY=your key
+   GEMINI_API_KEY=your_gemini_api_key
+   HUGGINGFACE_TOKEN=your_token  # Optional for embeddings
    ```
 
-3. **Run the application**
+3. **Add company documents**
+   Place your company documents (PDF, CSV, JSON) in the `documents/` folder
+
+4. **Run the application**
    ```bash
    python frontend.py
    ```
@@ -74,9 +76,23 @@ customer-support-assistant/
 
 ## Example Usage
 
-- Refunds: "Refund order #12345, email: john@example.com"
-- Technical: "How do I fix installation error 1603?"
-- General: "What's your return policy?"
+### Refund Requests
+```
+"I want a refund for order #12345, my email is john@example.com"
+```
+
+### Technical Support
+```
+"How do I fix TechOffice Suite installation error 1603?"
+"What's your return policy?"
+"I can't login to my account"
+```
+
+### General Questions
+```
+"What are your shipping policies?"
+"How do I contact customer service?"
+```
 
 ## Configuration
 
