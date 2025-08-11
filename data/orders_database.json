@@ -47,6 +47,78 @@
       "order_date": "2023-11-15",
       "status": "delivered",
       "refund_eligible": false
+    },
+    "ORD-2024-004": {
+      "customer_email": "alice@techcorp.com",
+      "amount": 79.99,
+      "product": "Cloud Storage Pro",
+      "order_date": "2024-02-01",
+      "status": "delivered",
+      "refund_eligible": true
+    },
+    "ORD-2024-005": {
+      "customer_email": "mike@startup.io",
+      "amount": 199.99,
+      "product": "Business Analytics Tool",
+      "order_date": "2024-01-30",
+      "status": "delivered",
+      "refund_eligible": true
+    },
+    "ORD-2024-006": {
+      "customer_email": "sarah@designstudio.com",
+      "amount": 89.99,
+      "product": "Creative Suite Premium",
+      "order_date": "2024-02-05",
+      "status": "delivered",
+      "refund_eligible": true
+    },
+    "ORD-2024-007": {
+      "customer_email": "david@consulting.com",
+      "amount": 159.99,
+      "product": "Project Management Pro",
+      "order_date": "2024-01-28",
+      "status": "delivered",
+      "refund_eligible": true
+    },
+    "ORD-2024-008": {
+      "customer_email": "emma@marketing.com",
+      "amount": 129.99,
+      "product": "Marketing Automation Suite",
+      "order_date": "2024-02-03",
+      "status": "delivered",
+      "refund_eligible": true
+    },
+    "ORD-2024-009": {
+      "customer_email": "james@retail.com",
+      "amount": 69.99,
+      "product": "Inventory Management System",
+      "order_date": "2024-01-27",
+      "status": "delivered",
+      "refund_eligible": true
+    },
+    "ORD-2024-010": {
+      "customer_email": "lisa@healthcare.org",
+      "amount": 249.99,
+      "product": "Healthcare Compliance Tool",
+      "order_date": "2024-02-02",
+      "status": "delivered",
+      "refund_eligible": true
+    },
+    "ORD-2024-011": {
+      "customer_email": "robert@finance.com",
+      "amount": 179.99,
+      "product": "Financial Planning Software",
+      "order_date": "2024-01-29",
+      "status": "delivered",
+      "refund_eligible": true
+    },
+    "ORD-2024-012": {
+      "customer_email": "anna@education.edu",
+      "amount": 39.99,
+      "product": "Learning Management System",
+      "order_date": "2024-02-04",
+      "status": "delivered",
+      "refund_eligible": true
     }
   },
   "processed_refunds": {
@@ -71,6 +143,14 @@
       "amount": 149.99,
       "customer_email": "customer@example.com",
       "refund_id": "REF_ORD-2024-001_3",
+      "processed_date": "2024-01-28",
+      "status": "processed"
+    },
+    "ORD-2024-009": {
+      "order_id": "ORD-2024-009",
+      "amount": 69.99,
+      "customer_email": "james@retail.com",
+      "refund_id": "REF_ORD-2024-009_4",
       "processed_date": "2024-01-28",
       "status": "processed"
     }

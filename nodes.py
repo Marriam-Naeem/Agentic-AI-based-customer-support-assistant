@@ -4,6 +4,9 @@ import time
 import random
 from typing import Dict, Any
 from smolagents import ToolCallingAgent, CodeAgent, tool
+# from smolagents.utils import populate_template
+from smolagents import PromptTemplates, PlanningPromptTemplate, ManagedAgentPromptTemplate, FinalAnswerPromptTemplate
+
 
 from states import SupportState
 from settings import (
@@ -16,7 +19,10 @@ from settings import (
     MAX_RETRIES,
     BASE_DELAY,
     MAX_DELAY,
-    RATE_LIMIT_KEYWORDS
+    RATE_LIMIT_KEYWORDS,
+    MANAGED_AGENT_PROMPT_TASK, 
+    MANAGER_AGENT_ENHANCED_INSTRUCTIONS,
+
 )
 from refund_tools import get_refund_tools
 from rag_tools import get_document_search_tools
@@ -24,6 +30,14 @@ from rag_tools import get_document_search_tools
 # Get existing tools
 refund_tools_list = get_refund_tools()
 document_tools_list = get_document_search_tools()
+
+def populate_template(template: str, variables: dict) -> str:
+    """Replace {placeholders} in the template with provided variables."""
+    if not template:
+        return template
+    for key, value in variables.items():
+        template = template.replace("{" + key + "}", str(value))
+    return template
 
 def handle_rate_limit(func):
     """Decorator to handle rate limiting with exponential backoff"""
@@ -96,36 +110,128 @@ def create_smolagents_system(models):
         model=models["refund_llm"],
         max_steps=2,
         name="refund_agent",
-        description="Agent that verifies refund eligibility and, if eligible, processes the refund and sends a professional email response.",
-        instructions=REFUND_AGENT_INSTRUCTIONS
+        description="Agent that verifies refund eligibility and, if eligible, processes the refund and generates a final answer with the decision.",
+        instructions=REFUND_AGENT_INSTRUCTIONS,
+        # prompt_templates=MANAGER_AGENT_CUSTOM_PROMPTS,
+        # prompt_templates = REFUND_AGENT_INSTRUCTIONS
     )
      
-    support_agent = CodeAgent(
+    support_agent = ToolCallingAgent(
         tools=[document_search_tool],
         model=models["issue_faq_llm"],
-        max_steps=10,
-        verbosity_level=2,
+        max_steps=3,  
+        verbosity_level=1, 
         name="support_agent",
         description="Support agent that answers user queries by searching company documents, provides step-by-step answers, and never reveals the document source to the user.",
         instructions=SUPPORT_AGENT_INSTRUCTIONS
     )
-    
+
+    # print(MANAGER_AGENT_CUSTOM_PROMPTS)
+    # custom_prompts = MANAGER_AGENT_CUSTOM_PROMPTS
+
     # Create manager agent that orchestrates the agents
     manager_agent = ToolCallingAgent(
         tools=[],
         model=models["router_llm"],
         managed_agents=[refund_agent, support_agent],
+        # prompt_templates=MANAGER_AGENT_CUSTOM_PROMPTS,
+        instructions=MANAGER_AGENT_ENHANCED_INSTRUCTIONS, 
         name="manager_agent",
-        description="Manager agent that autonomously decides which specialized agent to call based on customer request analysis."
+        description="Manager agent that autonomously decides which specialized agent to call based on customer request analysis.",
+        max_steps=3, 
+        verbosity_level=1  
     )
 
-    formatter_agent = CodeAgent(
+    manager_agent.prompt_templates["system_prompt"] = manager_agent.initialize_system_prompt()
+    support_agent.prompt_templates["system_prompt"] = SUPPORT_AGENT_INSTRUCTIONS
+    refund_agent.prompt_templates["system_prompt"] = REFUND_AGENT_INSTRUCTIONS
+    refund_agent.prompt_templates["managed_agent"]["task"] = MANAGED_AGENT_PROMPT_TASK
+    support_agent.prompt_templates["managed_agent"]["task"] = MANAGED_AGENT_PROMPT_TASK
+
+    # # Define placeholder variables after manager_agent is created
+    # placeholder_vars = {
+    #     "tools": "\n".join([getattr(t, "name", str(t)) for t in manager_agent.tools]) or "No tools available",
+    #     "managed_agents": "\n".join([getattr(a, "name", str(a)) for a in manager_agent.managed_agents]) or "No managed agents",
+    #     "custom_instructions": MANAGER_AGENT_ENHANCED_INSTRUCTIONS,
+    #     "task": "Customer request will be inserted here",
+    #     "name": manager_agent.name,
+    #     "final_answer": "[Final answer placeholder]",
+    #     "remaining_steps": "Steps to be determined based on current progress"
+    # }
+
+
+    # manager_agent.prompt_templates["system_prompt"] = populate_template(
+    #     manager_agent.prompt_templates["system_prompt"],
+    #     variables=placeholder_vars
+    # )
+
+    # manager_agent.prompt_templates["planning"]["initial_plan"] = populate_template(
+    #     manager_agent.prompt_templates["planning"]["initial_plan"],
+    #     variables=placeholder_vars
+    # )
+    # manager_agent.prompt_templates["planning"]["update_plan_post_messages"] = populate_template(
+    #     manager_agent.prompt_templates["planning"]["update_plan_post_messages"],
+    #     variables=placeholder_vars
+    # )
+
+    # manager_agent.prompt_templates["managed_agent"]["task"] = populate_template(
+    #     manager_agent.prompt_templates["managed_agent"]["task"],
+    #     variables=placeholder_vars
+    # )
+    # manager_agent.prompt_templates["managed_agent"]["report"] = populate_template(
+    #     manager_agent.prompt_templates["managed_agent"]["report"],
+    #     variables=placeholder_vars
+    # )
+
+    # manager_agent.prompt_templates["final_answer"]["pre_messages"] = populate_template(
+    #     manager_agent.prompt_templates["final_answer"]["pre_messages"],
+    #     variables=placeholder_vars
+    # )
+    # manager_agent.prompt_templates["final_answer"]["post_messages"] = populate_template(
+    #     manager_agent.prompt_templates["final_answer"]["post_messages"],
+    #     variables=placeholder_vars
+    # )
+
+    #  # System prompt
+    # manager_agent.prompt_templates["system_prompt"] = populate_template(
+    #     manager_agent.prompt_templates["system_prompt"],
+    #     variables=placeholder_vars
+    # )
+
+    # manager_agent.prompt_templates["planning"]["update_plan_post_messages"] = populate_template(
+    # manager_agent.prompt_templates["planning"]["update_plan_post_messages"],
+    # variables=placeholder_vars)
+
+    # manager_agent.prompt_templates["managed_agent"]["task"] = populate_template(
+    #     manager_agent.prompt_templates["managed_agent"]["task"],
+    #     variables=placeholder_vars
+    # )
+    # manager_agent.prompt_templates["managed_agent"]["report"] = populate_template(
+    #     manager_agent.prompt_templates["managed_agent"]["report"],
+    #     variables=placeholder_vars
+    # )
+
+    # manager_agent.prompt_templates["final_answer"]["pre_messages"] = populate_template(
+    #     manager_agent.prompt_templates["final_answer"]["pre_messages"],
+    #     variables=placeholder_vars
+    # )
+    # manager_agent.prompt_templates["final_answer"]["post_messages"] = populate_template(
+    #     manager_agent.prompt_templates["final_answer"]["post_messages"],
+    #     variables=placeholder_vars
+    # )
+
+    formatter_agent = ToolCallingAgent(
         tools=[],
         model=models["router_llm"],
         name="formatter_agent",
         description="Formatter agent that formats the response from the manager agent into a professional email response with proper start and end."
     )
+
+
+        
+        
     
+
     return {
         "manager_agent": manager_agent,
         "refund_agent": refund_agent,
@@ -137,12 +243,11 @@ def create_smolagents_system(models):
 def process_with_smolagents(smolagents_system, user_message):
     """Process user message with autonomous SmolAgents multi-agent system"""
     try:
-        # Use the manager agent to autonomously decide which agent to call
+
         manager_agent = smolagents_system["manager_agent"]
         
         prompt = MANAGER_AGENT_PROMPT_TEMPLATE.format(user_message=user_message)
-        
-        # Run the manager agent which will autonomously decide and call the appropriate agent
+      
         result = manager_agent.run(prompt)
 
         print(f"[DEBUG] Final email_content: {result[:500]}")   
@@ -258,3 +363,33 @@ class NodeFunctions:
             })
         
         return state
+
+
+def main():
+    """Main function to display agent system prompts without execution"""
+    print("Displaying SmolAgents System Prompts...")
+    print("This will show the manager agent system prompt without making any API calls.")
+    
+    try:
+        # Just create the agents to see the print statement
+        print("\nCreating agents to see system prompts...")
+        
+        # Create dummy models to avoid API calls
+        dummy_models = {
+            "router_llm": None,
+            "refund_llm": None,
+            "issue_faq_llm": None
+        }
+        
+        # This will trigger the print statement in create_smolagents_system
+        smolagents_system = create_smolagents_system(dummy_models)
+        print("Agents created successfully!")
+        
+    except Exception as e:
+        print(f"Error in main: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+if __name__ == "__main__":
+    main()
