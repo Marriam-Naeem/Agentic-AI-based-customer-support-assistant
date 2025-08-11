@@ -126,10 +126,7 @@ def create_smolagents_system(models):
         instructions=SUPPORT_AGENT_INSTRUCTIONS
     )
 
-    # print(MANAGER_AGENT_CUSTOM_PROMPTS)
-    # custom_prompts = MANAGER_AGENT_CUSTOM_PROMPTS
-
-    # Create manager agent that orchestrates the agents
+    
     manager_agent = ToolCallingAgent(
         tools=[],
         model=models["router_llm"],
@@ -147,78 +144,6 @@ def create_smolagents_system(models):
     refund_agent.prompt_templates["system_prompt"] = REFUND_AGENT_INSTRUCTIONS
     refund_agent.prompt_templates["managed_agent"]["task"] = MANAGED_AGENT_PROMPT_TASK
     support_agent.prompt_templates["managed_agent"]["task"] = MANAGED_AGENT_PROMPT_TASK
-
-    # # Define placeholder variables after manager_agent is created
-    # placeholder_vars = {
-    #     "tools": "\n".join([getattr(t, "name", str(t)) for t in manager_agent.tools]) or "No tools available",
-    #     "managed_agents": "\n".join([getattr(a, "name", str(a)) for a in manager_agent.managed_agents]) or "No managed agents",
-    #     "custom_instructions": MANAGER_AGENT_ENHANCED_INSTRUCTIONS,
-    #     "task": "Customer request will be inserted here",
-    #     "name": manager_agent.name,
-    #     "final_answer": "[Final answer placeholder]",
-    #     "remaining_steps": "Steps to be determined based on current progress"
-    # }
-
-
-    # manager_agent.prompt_templates["system_prompt"] = populate_template(
-    #     manager_agent.prompt_templates["system_prompt"],
-    #     variables=placeholder_vars
-    # )
-
-    # manager_agent.prompt_templates["planning"]["initial_plan"] = populate_template(
-    #     manager_agent.prompt_templates["planning"]["initial_plan"],
-    #     variables=placeholder_vars
-    # )
-    # manager_agent.prompt_templates["planning"]["update_plan_post_messages"] = populate_template(
-    #     manager_agent.prompt_templates["planning"]["update_plan_post_messages"],
-    #     variables=placeholder_vars
-    # )
-
-    # manager_agent.prompt_templates["managed_agent"]["task"] = populate_template(
-    #     manager_agent.prompt_templates["managed_agent"]["task"],
-    #     variables=placeholder_vars
-    # )
-    # manager_agent.prompt_templates["managed_agent"]["report"] = populate_template(
-    #     manager_agent.prompt_templates["managed_agent"]["report"],
-    #     variables=placeholder_vars
-    # )
-
-    # manager_agent.prompt_templates["final_answer"]["pre_messages"] = populate_template(
-    #     manager_agent.prompt_templates["final_answer"]["pre_messages"],
-    #     variables=placeholder_vars
-    # )
-    # manager_agent.prompt_templates["final_answer"]["post_messages"] = populate_template(
-    #     manager_agent.prompt_templates["final_answer"]["post_messages"],
-    #     variables=placeholder_vars
-    # )
-
-    #  # System prompt
-    # manager_agent.prompt_templates["system_prompt"] = populate_template(
-    #     manager_agent.prompt_templates["system_prompt"],
-    #     variables=placeholder_vars
-    # )
-
-    # manager_agent.prompt_templates["planning"]["update_plan_post_messages"] = populate_template(
-    # manager_agent.prompt_templates["planning"]["update_plan_post_messages"],
-    # variables=placeholder_vars)
-
-    # manager_agent.prompt_templates["managed_agent"]["task"] = populate_template(
-    #     manager_agent.prompt_templates["managed_agent"]["task"],
-    #     variables=placeholder_vars
-    # )
-    # manager_agent.prompt_templates["managed_agent"]["report"] = populate_template(
-    #     manager_agent.prompt_templates["managed_agent"]["report"],
-    #     variables=placeholder_vars
-    # )
-
-    # manager_agent.prompt_templates["final_answer"]["pre_messages"] = populate_template(
-    #     manager_agent.prompt_templates["final_answer"]["pre_messages"],
-    #     variables=placeholder_vars
-    # )
-    # manager_agent.prompt_templates["final_answer"]["post_messages"] = populate_template(
-    #     manager_agent.prompt_templates["final_answer"]["post_messages"],
-    #     variables=placeholder_vars
-    # )
 
     formatter_agent = ToolCallingAgent(
         tools=[],
