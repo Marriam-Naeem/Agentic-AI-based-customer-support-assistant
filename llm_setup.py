@@ -18,7 +18,7 @@ class SmolAgentsLLMManager:
         try:
             # Create the Gemini model once and reuse it
             self.gemini_model = OpenAIServerModel(
-                model_id="gemini-2.0-flash", 
+                model_id="gemini-2.0-flash-lite", 
                 api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
                 api_key=GEMINI_API_KEY,
             )
@@ -59,34 +59,6 @@ class EmbeddingManager:
         return self.embeddings
 
 
-def handle_rate_limit_error(func):
-    """Decorator to handle rate limiting with exponential backoff for LLM setup"""
-    def wrapper(*args, **kwargs):
-        max_retries = 3
-        base_delay = 2
-        
-        for attempt in range(max_retries):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                error_str = str(e).lower()
-                is_rate_limit = any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS)
-                
-                if is_rate_limit and attempt < max_retries - 1:
-                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
-                    print(f"Rate limit hit during setup, waiting {delay:.1f} seconds before retry {attempt + 1}/{max_retries}")
-                    time.sleep(delay)
-                    continue
-                elif is_rate_limit:
-                    print(f"Rate limit exceeded during setup after {max_retries} attempts.")
-                    return None
-                else:
-                    raise e
-        return func(*args, **kwargs)
-    return wrapper
-
-
-@handle_rate_limit_error
 def setup_llm_models() -> Dict[str, Any]:
     try:
         llm_manager = SmolAgentsLLMManager()
@@ -101,7 +73,6 @@ def setup_llm_models() -> Dict[str, Any]:
         raise
 
 
-@handle_rate_limit_error
 def setup_embedding_model():
     try:
         return EmbeddingManager().get_embeddings()

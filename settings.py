@@ -1,11 +1,11 @@
 import os
 from dotenv import load_dotenv
+from typing import Dict, Any
 
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# HuggingFace token for SmolAgents
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 if not HUGGINGFACE_TOKEN:
     print("Warning: HUGGINGFACE_TOKEN not found. Some models may not work without authentication.")
@@ -14,13 +14,11 @@ CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/semantic_vector_sto
 RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
 RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "200"))
 
-# Rate Limiting and Error Handling Configuration
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 BASE_DELAY = float(os.getenv("BASE_DELAY", "2.0"))
 MAX_DELAY = float(os.getenv("MAX_DELAY", "60.0"))
 RATE_LIMIT_KEYWORDS = ["rate_limit", "rate limit", "quota", "resource_exhausted", "429", "RESOURCE_EXHAUSTED"]
 
-# Agent Instructions and Prompts
 REFUND_AGENT_INSTRUCTIONS = """You are a refund processing agent that answers users queries. Your workflow is:
 1. FIRST CHECK: Extract the customer ID from the task. If the customer didn't provide an order_id, immediately tell them "I need your order ID to process a refund. Please provide your order number."
 2. If order_id is provided, call refund_verification_tool with the order_id (and customer_email if available).
@@ -118,7 +116,6 @@ Best regards,
 TechCorps Support Agent"""
 
 
-# Enhanced Manager Agent Instructions
 MANAGER_AGENT_ENHANCED_INSTRUCTIONS = """You are the primary orchestrator of a specialized customer service system. Your role is to:
 
 INTELLIGENCE REQUIREMENTS:

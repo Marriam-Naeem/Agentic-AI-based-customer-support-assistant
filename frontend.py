@@ -16,24 +16,12 @@ class ChatbotInterface:
         self.config = {"configurable": {"thread_id": self.session_id}}
     
     def process_message(self, message: str, history: List[List[str]]) -> Tuple[str, List[List[str]]]:
-        if not message.strip():
-            return "", history
-        try:
-            result = graph.invoke(
-                create_initial_state(message, self.session_id),
-                config=self.config
-            )
-            history.append([message, self._extract_response(result)])
-            return "", history
-        except Exception as e:
-            error_message = str(e).lower()
-            if any(keyword in error_message for keyword in ["rate_limit", "quota", "resource_exhausted", "429"]):
-                history.append([message, RATE_LIMIT_RESPONSE])
-            else:
-                history.append([message, f"Sorry, I encountered an error while processing your request: {str(e)}"])
-            return "", history
+        # This method is deprecated - use user_input function instead
+        # Keeping for backward compatibility but not used
+        return "", history
     
     def clear_session(self) -> Tuple[str, List[List[str]]]:
+        # Generate new session ID to clear checkpoint memory
         self.session_id = str(uuid.uuid4())
         self.config = {"configurable": {"thread_id": self.session_id}}
         return "", []
@@ -41,11 +29,10 @@ class ChatbotInterface:
     def _extract_response(self, result: dict) -> str:
         if result.get("final_email"):
             return result["final_email"]
-            
+
         if result.get("final_response"):
-            return result["final_response"]
-        
-        # Generic fallback
+            return result["final_response"] 
+
         return "I've processed your request. Please let me know if you need any clarification."
 
 
@@ -87,7 +74,17 @@ def create_chatbot_interface():
         """)
         
         def user_input(message, history):
-            return chatbot.process_message(message, history)
+            # Process the message and get response
+            try:
+                result = graph.invoke(
+                    create_initial_state(message, chatbot.session_id, history),
+                    config=chatbot.config
+                )
+                # Get the updated conversation history from the backend result
+                updated_history = result.get("conversation_history", history)
+                return "", updated_history
+            except Exception as e:
+                return "", history + [[message, f"Error: {str(e)}"]]
         def clear_chat():
             new_msg, new_history = chatbot.clear_session()
             return new_msg, new_history
