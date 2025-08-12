@@ -1,7 +1,5 @@
 import os
 from dotenv import load_dotenv
-from smolagents import PromptTemplates, PlanningPromptTemplate, ManagedAgentPromptTemplate, FinalAnswerPromptTemplate
-
 
 load_dotenv()
 
@@ -12,7 +10,6 @@ HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 if not HUGGINGFACE_TOKEN:
     print("Warning: HUGGINGFACE_TOKEN not found. Some models may not work without authentication.")
 
-# CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma_db")
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/semantic_vector_store")
 RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
 RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "200"))

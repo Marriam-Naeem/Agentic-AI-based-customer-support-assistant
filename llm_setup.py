@@ -16,22 +16,18 @@ class SmolAgentsLLMManager:
         # Use Gemini directly without fallback
         print("Using Gemini Models")
         try:
+            # Create the Gemini model once and reuse it
+            self.gemini_model = OpenAIServerModel(
+                model_id="gemini-2.0-flash", 
+                api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
+                api_key=GEMINI_API_KEY,
+            )
+            
+            # All model types use the same instance
             self.models = {
-                "router": OpenAIServerModel(
-                    model_id="gemini-2.0-flash", 
-                    api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
-                    api_key=GEMINI_API_KEY,
-                ),
-                "refund": OpenAIServerModel(
-                    model_id="gemini-2.0-flash", 
-                    api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
-                    api_key=GEMINI_API_KEY,
-                ),
-                "issue_faq": OpenAIServerModel(
-                    model_id="gemini-2.0-flash", 
-                    api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
-                    api_key=GEMINI_API_KEY,
-                ),
+                "router": self.gemini_model,
+                "refund": self.gemini_model,
+                "issue_faq": self.gemini_model,
             }
             print("Models loaded successfully")
         except Exception as e:

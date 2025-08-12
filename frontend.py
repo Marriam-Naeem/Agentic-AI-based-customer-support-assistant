@@ -39,11 +39,9 @@ class ChatbotInterface:
         return "", []
     
     def _extract_response(self, result: dict) -> str:
-        # Return the final email if available, otherwise a generic response
         if result.get("final_email"):
             return result["final_email"]
-        
-        # Fallback to final_response if available
+            
         if result.get("final_response"):
             return result["final_response"]
         
