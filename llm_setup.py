@@ -4,12 +4,10 @@ from settings import GEMINI_API_KEY, RATE_LIMIT_KEYWORDS, RATE_LIMIT_RESPONSE
 import time
 import random
 
-
 try:
     from langchain_huggingface import HuggingFaceEmbeddings
 except ImportError:
     from langchain.embeddings import HuggingFaceEmbeddings
-
 
 class SmolAgentsLLMManager:
     def __init__(self):
@@ -58,7 +56,6 @@ class EmbeddingManager:
     def get_embeddings(self):
         return self.embeddings
 
-
 def setup_llm_models() -> Dict[str, Any]:
     try:
         llm_manager = SmolAgentsLLMManager()
@@ -72,14 +69,12 @@ def setup_llm_models() -> Dict[str, Any]:
         print(f"Error in setup_llm_models: {e}")
         raise
 
-
 def setup_embedding_model():
     try:
         return EmbeddingManager().get_embeddings()
     except Exception as e:
         print(f"Error in setup_embedding_model: {e}")
         raise
-
 
 # Initialize models at module level with proper error handling
 try:

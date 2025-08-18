@@ -101,7 +101,7 @@ def create_smolagents_system(models):
         managed_agents=[refund_agent, support_agent],
         name="manager_agent",
         description="Manager agent that autonomously decides which specialized agent to call based on customer request analysis.",
-        max_steps=3,  # Reduced to prevent duplication
+        max_steps=3, 
         verbosity_level=1  
     )
 
@@ -154,7 +154,6 @@ def format_with_smolagents(smolagents_system, user_message):
         error_str = str(e).lower()
         if any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS):
             return RATE_LIMIT_RESPONSE
-        # If formatting fails, return the original message with basic formatting
         return f"Dear Customer,\n\n{user_message}\n\nBest regards,\nTechCorps Support Team"
 
 class NodeFunctions:
@@ -163,36 +162,31 @@ class NodeFunctions:
         self.router_llm = models.get("router_llm")
         self.refund_llm = models.get("refund_llm")
         self.issue_faq_llm = models.get("issue_faq_llm")
-        
-        # Initialize SmolAgents multi-agent system
+
         self.smolagents_system = create_smolagents_system(models)
     
     def router_agent(self, state: SupportState) -> dict:
         """Use autonomous SmolAgents multi-agent system for intelligent processing"""
         user_message = state.get("user_message", "")
         conversation_history = state.get("conversation_history", [])
-        
-        # Build context from conversation history
+    
         context = ""
         if conversation_history:
             context = "Previous conversation:\n"
-            for user_msg, bot_response in conversation_history[-3:]:  # Last 3 exchanges
+            for user_msg, bot_response in conversation_history[-3:]:  
                 context += f"User: {user_msg}\nBot: {bot_response}\n\n"
             context += f"Current message: {user_message}\n\n"
         else:
             context = f"Current message: {user_message}\n\n"
         
         try:
-            # Use the SmolAgents manager agent to autonomously process the message with context
             response_content = process_with_smolagents(self.smolagents_system, context)
             
-            # Update state with autonomous SmolAgents results
             state.update({
                 "final_response": response_content
             })
             
         except Exception as e:
-            # Fallback response
             error_str = str(e).lower()
             if any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS):
                 final_response = RATE_LIMIT_RESPONSE
@@ -217,7 +211,6 @@ class NodeFunctions:
                 "final_email": formatted_email
             })
         except Exception as e:
-            # If formatting fails, use the original response with basic formatting
             error_str = str(e).lower()
             if any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS):
                 formatted_email = RATE_LIMIT_RESPONSE
@@ -228,7 +221,6 @@ class NodeFunctions:
                 "final_email": formatted_email
             })
         
-        # Update conversation history
         conversation_history = state.get("conversation_history", [])
         conversation_history.append([user_message, state.get("final_email", final_response)])
         state.update({
