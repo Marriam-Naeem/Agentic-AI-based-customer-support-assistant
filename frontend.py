@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from graph import graph
 from states import create_initial_state
 from settings import RATE_LIMIT_RESPONSE
+from llm_setup import setup_llm_models
 
 
 class ChatbotInterface:
@@ -62,7 +63,10 @@ def create_chatbot_interface():
         with gr.Row():
             msg = gr.Textbox(label="Your Message", placeholder="Type your question here...", lines=2, scale=4)
             submit_btn = gr.Button("Send", variant="primary", scale=1)
-        clear_btn = gr.Button("Clear Chat", variant="secondary")
+        
+        with gr.Row():
+            clear_btn = gr.Button("Clear Chat", variant="secondary")
+        
         
         gr.Markdown("""
         ---
@@ -88,9 +92,35 @@ def create_chatbot_interface():
         def clear_chat():
             new_msg, new_history = chatbot.clear_session()
             return new_msg, new_history
+        
+
+        
+        def get_cache_status():
+            try:
+                # Access cache manager directly from llm_setup
+                models = setup_llm_models()
+                if 'cache_manager' in models and models['cache_manager']:
+                    cache_manager = models['cache_manager']
+                    stats = cache_manager.get_cache_stats()
+                    if stats.get('status') == 'enabled':
+                        perf = stats.get('performance', {})
+                        cache_type = stats.get('cache_type', 'unknown')
+                        hit_rate = perf.get('hit_rate_percent', 0)
+                        total_queries = perf.get('total_queries', 0)
+                        cache_hits = perf.get('cache_hits', 0)
+                        cache_misses = perf.get('cache_misses', 0)
+                        return f"{cache_type.title()} Cache | Hit Rate: {hit_rate}% | Hits: {cache_hits} | Misses: {cache_misses} | Total: {total_queries}"
+                    else:
+                        return f"Cache: {stats.get('status', 'unknown')}"
+                else:
+                    return "Cache manager not available"
+            except Exception as e:
+                return f"Error getting cache status: {str(e)}"
+        
         submit_btn.click(user_input, inputs=[msg, chatbot_component], outputs=[msg, chatbot_component])
         msg.submit(user_input, inputs=[msg, chatbot_component], outputs=[msg, chatbot_component])
         clear_btn.click(clear_chat, outputs=[msg, chatbot_component])
+        
     
     return interface
 

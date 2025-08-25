@@ -14,9 +14,12 @@ CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/semantic_vector_sto
 RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
 RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "200"))
 
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
-BASE_DELAY = float(os.getenv("BASE_DELAY", "2.0"))
-MAX_DELAY = float(os.getenv("MAX_DELAY", "60.0"))
+# Redis Configuration for Semantic Caching
+REDIS_URL = os.getenv("REDIS_URL", "redis://default:3GS6i71kUxKpxyYkytUZvdZFbDuCmRQr@redis-10792.c11.us-east-1-3.ec2.redns.redis-cloud.com:10792")
+REDIS_CACHE_TTL = int(os.getenv("REDIS_CACHE_TTL", "3600"))  # 1 hour default TTL
+REDIS_SEMANTIC_DISTANCE_THRESHOLD = float(os.getenv("REDIS_SEMANTIC_DISTANCE_THRESHOLD", "0.3"))
+REDIS_CACHE_ENABLED = os.getenv("REDIS_CACHE_ENABLED", "true").lower() == "true"
+
 RATE_LIMIT_KEYWORDS = ["rate_limit", "rate limit", "quota", "resource_exhausted", "429", "RESOURCE_EXHAUSTED"]
 
 REFUND_AGENT_INSTRUCTIONS = """You are a refund processing agent that answers users queries. Your workflow is:
@@ -64,7 +67,7 @@ Execute the appropriate managed agent to handle this customer request and return
 FORMATTER_AGENT_PROMPT_TEMPLATE = """You are a professional email formatting specialist. Your role is to format the following given raw responses from support agents into polished, professional customer service emails.
 
 FORMATTING GUIDELINES:
-1. Structure the email with proper greeting, body, and closing
+1. Structure the email with proper greeting, body, and closing and Dont remove anything from the answer.
 2. Ensure professional tone and clear communication
 3. Remove any technical jargon or internal references
 4. Clean up formatting issues and improve readability
@@ -114,27 +117,6 @@ I apologize, but our system is currently experiencing high demand. Please try ag
 
 Best regards,
 TechCorps Support Agent"""
-
-
-MANAGER_AGENT_ENHANCED_INSTRUCTIONS = """You are the primary orchestrator of a specialized customer service system. Your role is to:
-
-INTELLIGENCE REQUIREMENTS:
-- Analyze customer request patterns and context clues
-- Identify emotional tone and urgency indicators  
-- Determine optimal agent specialization match
-- Coordinate complex multi-step resolutions
-
-AUTONOMOUS DECISION MAKING:
-- Never ask customers which agent they prefer
-- Make intelligent routing decisions independently
-- Adapt communication style to customer needs
-- Ensure seamless, professional experience
-
-QUALITY ASSURANCE:
-- Validate all agent responses meet professional standards
-- Ensure complete request resolution
-- Maintain consistent brand voice across all interactions
-- Prioritize customer satisfaction and confidence"""
 
 MANAGED_AGENT_PROMPT_TASK = """
 You're a helpful agent named '{{name}}'.

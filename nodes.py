@@ -1,11 +1,8 @@
 import json
-import re
 import time
-import random
-from typing import Dict, Any
-from smolagents import ToolCallingAgent, CodeAgent, tool
-# from smolagents.utils import populate_template
-# from smolagents import PromptTemplates, PlanningPromptTemplate, ManagedAgentPromptTemplate, FinalAnswerPromptTemplate
+import logging
+from typing import Dict, Any, Optional
+from smolagents import ToolCallingAgent, tool
 from states import SupportState
 from settings import (
     REFUND_AGENT_INSTRUCTIONS, 
@@ -20,17 +17,33 @@ from settings import (
 from refund_tools import get_refund_tools
 from rag_tools import get_document_search_tools
 
+# Redis caching integration
+try:
+    from redis_cache_manager import create_cache_manager, setup_caching_for_llm
+    REDIS_CACHING_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+except ImportError as e:
+    print(f"Redis caching not available: {e}")
+    REDIS_CACHING_AVAILABLE = False
+    logger = None
 
+# Pre-load tools once at module level
 refund_tools_list = get_refund_tools()
 document_tools_list = get_document_search_tools()
 
-# def populate_template(template: str, variables: dict) -> str:
-#     """Replace {placeholders} in the template with provided variables."""
-#     if not template:
-#         return template
-#     for key, value in variables.items():
-#         template = template.replace("{" + key + "}", str(value))
-#     return template
+# Tool lookup cache for better performance
+_tool_cache = {}
+
+def _get_tool_by_name(tools_list: list, tool_name: str):
+    """Get tool by name with caching for better performance"""
+    if tool_name not in _tool_cache:
+        for tool in tools_list:
+            if tool.name == tool_name:
+                _tool_cache[tool_name] = tool
+                break
+        else:
+            _tool_cache[tool_name] = None
+    return _tool_cache.get(tool_name)
 
 @tool
 def refund_verification_tool(order_id: str, customer_email: str = None) -> str:
@@ -73,6 +86,14 @@ def document_search_tool(query: str, max_results: int = 2) -> str:
 def create_smolagents_system(models):
     """Create SmolAgents multi-agent system following the documentation pattern"""
     
+    # Setup Redis caching for all agents if available
+    cache_manager = models.get("cache_manager") if REDIS_CACHING_AVAILABLE else None
+    
+    if cache_manager:
+        logger.info("Redis caching enabled for SmolAgents system")
+        print("Redis caching enabled for all agents")
+    
+    # Create agents with optimized configuration
     refund_agent = ToolCallingAgent(
         tools=[refund_verification_tool, refund_processing_tool],
         model=models["refund_llm"],
@@ -94,7 +115,6 @@ def create_smolagents_system(models):
         instructions=SUPPORT_AGENT_INSTRUCTIONS
     )
 
-    
     manager_agent = ToolCallingAgent(
         tools=[],
         model=models["router_llm"],
@@ -122,85 +142,156 @@ def create_smolagents_system(models):
         "manager_agent": manager_agent,
         "refund_agent": refund_agent,
         "support_agent": support_agent,
-        "formatter_agent": formatter_agent
+        "formatter_agent": formatter_agent,
+        "cache_manager": cache_manager
     }
 
-def process_with_smolagents(smolagents_system, user_message):
-    """Process user message with autonomous SmolAgents multi-agent system"""
-    try:
+def _handle_rate_limit_error(error: Exception) -> str:
+    """Centralized rate limit error handling"""
+    error_str = str(error).lower()
+    return RATE_LIMIT_RESPONSE if any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS) else FALLBACK_RESPONSE
 
+def _log_cache_status(cache_manager, operation: str, logger_enabled: bool = True):
+    """Centralized cache status logging"""
+    if not cache_manager or not REDIS_CACHING_AVAILABLE:
+        return
+    
+    cache_stats = cache_manager.get_cache_stats()
+    status = cache_stats.get('status', 'unknown')
+    
+    if logger_enabled and logger:
+        logger.info(f"{operation} - Cache Status: {status}")
+    print(f"{operation} - Cache Status: {status}")
+
+def _log_performance_metrics(cache_manager, response_time: float, logger_enabled: bool = True):
+    """Centralized performance metrics logging"""
+    if not cache_manager or not REDIS_CACHING_AVAILABLE:
+        return
+    
+    perf_stats = cache_manager.get_cache_stats().get("performance", {})
+    hit_rate = perf_stats.get('hit_rate_percent', 0)
+    total_queries = perf_stats.get('total_queries', 0)
+    
+    if logger_enabled and logger:
+        logger.info(f"Response generated in {response_time:.3f}s, Cache Hit Rate: {hit_rate}%, Total Queries: {total_queries}")
+    print(f"Response generated in {response_time:.3f}s | Cache Hit Rate: {hit_rate}% | Total Queries: {total_queries}")
+
+def process_with_smolagents(smolagents_system: Dict[str, Any], user_message: str, user_message_only: Optional[str] = None) -> str:
+    """Process user message with autonomous SmolAgents multi-agent system using semantic caching"""
+    try:
         manager_agent = smolagents_system["manager_agent"]
+        cache_manager = smolagents_system.get("cache_manager")
+        
+        # Log cache status
+        _log_cache_status(cache_manager, "Processing query")
         
         prompt = MANAGER_AGENT_PROMPT_TEMPLATE.format(user_message=user_message)
-      
-        result = manager_agent.run(prompt)
-
-        print(f"[DEBUG] Final email_content: {result[:500]}")   
         
+        # Check cache first
+        cached_response = None
+        cache_key = None
+        
+        if cache_manager and REDIS_CACHING_AVAILABLE:
+            cache_key = cache_manager.create_cache_key(user_message_only or user_message, "manager_agent")
+            # print(f"Checking semantic cache with key: {cache_key[:80]}...")
+            logger.info(f"Checking semantic cache with key: {cache_key[:80]}...")
+            
+            cached_response = cache_manager.check_cache_and_store(cache_key, "manager_agent")
+            if cached_response:
+                # print("SEMANTIC CACHE HIT! Using cached response for similar query")
+                logger.info("Semantic cache hit - using cached response")
+                return cached_response
+        
+        # Process with LLM if no cache hit
+        start_time = time.time()
+        result = manager_agent.run(prompt)
+        response_time = time.time() - start_time
+        
+        # Store response in cache
+        if cache_manager and REDIS_CACHING_AVAILABLE and cache_key:
+            print(f"Storing in semantic cache with key: {cache_key[:80]}...")
+            logger.info(f"Storing in semantic cache with key: {cache_key[:80]}...")
+            cache_manager.check_cache_and_store(cache_key, "manager_agent", result)
+        
+        # Log performance metrics
+        _log_performance_metrics(cache_manager, response_time)
+        
+        print(f"[DEBUG] Final email_content: {result[:500]}")
         return result
             
     except Exception as e:
-        error_str = str(e).lower()
-        if any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS):
-            return RATE_LIMIT_RESPONSE
-        return FALLBACK_RESPONSE
+        return _handle_rate_limit_error(e)
 
-def format_with_smolagents(smolagents_system, user_message):
-    """Format the response from the manager agent into a professional email response with proper start and end."""
+def format_with_smolagents(smolagents_system: Dict[str, Any], user_message: str) -> str:
+    """Format the response from the manager agent into a professional email response."""
     try:
         prompt = FORMATTER_AGENT_PROMPT_TEMPLATE.format(user_message=user_message)
         return smolagents_system["formatter_agent"].run(prompt)
     except Exception as e:
-        error_str = str(e).lower()
-        if any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS):
-            return RATE_LIMIT_RESPONSE
-        return f"Dear Customer,\n\n{user_message}\n\nBest regards,\nTechCorps Support Team"
+        return _handle_rate_limit_error(e)
+
+def _build_conversation_context(conversation_history: list, user_message: str) -> str:
+    """Build conversation context efficiently"""
+    if not conversation_history:
+        return f"Current message: {user_message}\n\n"
+    
+    context_parts = ["Previous conversation:"]
+    for user_msg, bot_response in conversation_history[-3:]:
+        context_parts.extend([f"User: {user_msg}", f"Bot: {bot_response}", ""])
+    context_parts.extend([f"Current message: {user_message}", ""])
+    
+    return "\n".join(context_parts)
 
 class NodeFunctions:
+    """Optimized NodeFunctions class with improved performance and maintainability"""
     
     def __init__(self, models: Dict[str, Any]):
         self.router_llm = models.get("router_llm")
         self.refund_llm = models.get("refund_llm")
         self.issue_faq_llm = models.get("issue_faq_llm")
-
+        self.cache_manager = models.get("cache_manager")
+        
         self.smolagents_system = create_smolagents_system(models)
+        
+        # Log cache integration status
+        _log_cache_status(self.cache_manager, "NodeFunctions initialized")
     
     def router_agent(self, state: SupportState) -> dict:
         """Use autonomous SmolAgents multi-agent system for intelligent processing"""
         user_message = state.get("user_message", "")
         conversation_history = state.get("conversation_history", [])
-    
-        context = ""
-        if conversation_history:
-            context = "Previous conversation:\n"
-            for user_msg, bot_response in conversation_history[-3:]:  
-                context += f"User: {user_msg}\nBot: {bot_response}\n\n"
-            context += f"Current message: {user_message}\n\n"
-        else:
-            context = f"Current message: {user_message}\n\n"
+        
+        # Log cache performance at start
+        _log_cache_status(self.cache_manager, "Router Agent", logger_enabled=False)
+        
+        # Build context efficiently
+        context = _build_conversation_context(conversation_history, user_message)
+        user_message_only = user_message.strip().lower()
         
         try:
-            response_content = process_with_smolagents(self.smolagents_system, context)
+            response_content = process_with_smolagents(self.smolagents_system, context, user_message_only)
             
-            state.update({
-                "final_response": response_content
-            })
+            # Log cache performance after processing
+            if self.cache_manager and REDIS_CACHING_AVAILABLE:
+                end_stats = self.cache_manager.get_cache_stats()
+                perf = end_stats.get("performance", {})
+                hit_rate = perf.get('hit_rate_percent', 0)
+                total_queries = perf.get('total_queries', 0)
+                
+                print(f"Router Agent Complete - Hit Rate: {hit_rate}% | Total Queries: {total_queries}")
+                if logger:
+                    logger.info(f"Router Agent complete - Hit Rate: {hit_rate}%, Total Queries: {total_queries}")
+            
+            state.update({"final_response": response_content})
             
         except Exception as e:
-            error_str = str(e).lower()
-            if any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS):
-                final_response = RATE_LIMIT_RESPONSE
-            else:
-                final_response = FALLBACK_RESPONSE
-            
-            state.update({
-                "final_response": final_response
-            })
+            final_response = _handle_rate_limit_error(e)
+            state.update({"final_response": final_response})
         
         return state
     
     def formatter_agent(self, state: SupportState) -> dict:
-        """Formatter agent that formats the response from the manager agent into a professional email response with proper start and end."""
+        """Formatter agent that formats responses into professional emails."""
         final_response = state.get("final_response", "")
         user_message = state.get("user_message", "")
         
@@ -211,20 +302,12 @@ class NodeFunctions:
                 "final_email": formatted_email
             })
         except Exception as e:
-            error_str = str(e).lower()
-            if any(keyword in error_str for keyword in RATE_LIMIT_KEYWORDS):
-                formatted_email = RATE_LIMIT_RESPONSE
-            else:
-                formatted_email = f"Dear Customer,\n\n{final_response}\n\nBest regards,\nTechCorps Support Team"
-            
-            state.update({
-                "final_email": formatted_email
-            })
+            formatted_email = _handle_rate_limit_error(e)
+            state.update({"final_email": formatted_email})
         
+        # Update conversation history efficiently
         conversation_history = state.get("conversation_history", [])
         conversation_history.append([user_message, state.get("final_email", final_response)])
-        state.update({
-            "conversation_history": conversation_history
-        })
+        state.update({"conversation_history": conversation_history})
         
         return state

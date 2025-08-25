@@ -1,8 +1,14 @@
 from typing import Dict, Any
 from smolagents import OpenAIServerModel
-from settings import GEMINI_API_KEY, RATE_LIMIT_KEYWORDS, RATE_LIMIT_RESPONSE
-import time
-import random
+from settings import GEMINI_API_KEY
+
+# Import Redis caching
+try:
+    from redis_cache_manager import create_cache_manager, setup_caching_for_llm
+    REDIS_CACHING_AVAILABLE = True
+except ImportError as e:
+    print(f"Redis caching not available: {e}")
+    REDIS_CACHING_AVAILABLE = False
 
 try:
     from langchain_huggingface import HuggingFaceEmbeddings
@@ -14,20 +20,16 @@ class SmolAgentsLLMManager:
         # Use Gemini directly without fallback
         print("Using Gemini Models")
         try:
-            # Create the Gemini model once and reuse it
             self.gemini_model = OpenAIServerModel(
                 model_id="gemini-2.0-flash-lite", 
                 api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
                 api_key=GEMINI_API_KEY,
             )
-            
-            # All model types use the same instance
             self.models = {
                 "router": self.gemini_model,
                 "refund": self.gemini_model,
                 "issue_faq": self.gemini_model,
             }
-            print("Models loaded successfully")
         except Exception as e:
             print(f"Error initializing Gemini models: {e}")
             raise
@@ -59,11 +61,31 @@ class EmbeddingManager:
 def setup_llm_models() -> Dict[str, Any]:
     try:
         llm_manager = SmolAgentsLLMManager()
+        
+        # Initialize Redis semantic caching if available
+        cache_manager = None
+        if REDIS_CACHING_AVAILABLE:
+            try:
+                # Get embeddings model for semantic caching
+                embedding_model = setup_embedding_model()
+                cache_manager = create_cache_manager(embedding_model)
+                
+                # Setup caching for all LLM models
+                for model_type in ["router", "refund", "issue_faq"]:
+                    model = llm_manager.get_model(model_type)
+                    setup_caching_for_llm(model, cache_manager)
+                
+                print("Redis semantic caching enabled for all LLM models")
+            except Exception as e:
+                print(f"Failed to setup Redis caching: {e}")
+                cache_manager = None
+        
         return {
             "router_llm": llm_manager.get_model("router"),
             "refund_llm": llm_manager.get_model("refund"),
             "issue_faq_llm": llm_manager.get_model("issue_faq"),
-            "llm_manager": llm_manager
+            "llm_manager": llm_manager,
+            "cache_manager": cache_manager
         }
     except Exception as e:
         print(f"Error in setup_llm_models: {e}")
