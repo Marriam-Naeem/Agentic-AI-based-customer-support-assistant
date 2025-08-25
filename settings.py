@@ -10,14 +10,14 @@ HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 if not HUGGINGFACE_TOKEN:
     print("Warning: HUGGINGFACE_TOKEN not found. Some models may not work without authentication.")
 
-CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./data/semantic_vector_store")
-RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
-RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "200"))
+CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR")
+RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE"))
+RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP"))
 
 # Redis Configuration for Semantic Caching
-REDIS_URL = os.getenv("REDIS_URL", "redis://default:3GS6i71kUxKpxyYkytUZvdZFbDuCmRQr@redis-10792.c11.us-east-1-3.ec2.redns.redis-cloud.com:10792")
-REDIS_CACHE_TTL = int(os.getenv("REDIS_CACHE_TTL", "3600"))  # 1 hour default TTL
-REDIS_SEMANTIC_DISTANCE_THRESHOLD = float(os.getenv("REDIS_SEMANTIC_DISTANCE_THRESHOLD", "0.3"))
+REDIS_URL = os.getenv("REDIS_URL")
+REDIS_CACHE_TTL = int(os.getenv("REDIS_CACHE_TTL"))
+REDIS_SEMANTIC_DISTANCE_THRESHOLD = float(os.getenv("REDIS_SEMANTIC_DISTANCE_THRESHOLD"))
 REDIS_CACHE_ENABLED = os.getenv("REDIS_CACHE_ENABLED", "true").lower() == "true"
 
 RATE_LIMIT_KEYWORDS = ["rate_limit", "rate limit", "quota", "resource_exhausted", "429", "RESOURCE_EXHAUSTED"]
