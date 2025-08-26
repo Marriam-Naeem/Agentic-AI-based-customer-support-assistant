@@ -11,8 +11,7 @@ models = setup_llm_models()
 
 # Check if caching is available
 if "cache_manager" in models and models["cache_manager"]:
-    cache_stats = models["cache_manager"].get_cache_stats()
-    print(f"Redis caching enabled: {cache_stats.get('status', 'unknown')}")
+    print("Redis caching enabled")
 else:
     print("Redis caching not available")
 

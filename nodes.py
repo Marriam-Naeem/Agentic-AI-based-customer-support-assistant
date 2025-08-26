@@ -17,7 +17,6 @@ from settings import (
 from refund_tools import get_refund_tools
 from rag_tools import get_document_search_tools
 
-# Redis caching integration
 try:
     from redis_cache_manager import create_cache_manager, setup_caching_for_llm
     REDIS_CACHING_AVAILABLE = True
@@ -30,20 +29,6 @@ except ImportError as e:
 # Pre-load tools once at module level
 refund_tools_list = get_refund_tools()
 document_tools_list = get_document_search_tools()
-
-# Tool lookup cache for better performance
-_tool_cache = {}
-
-def _get_tool_by_name(tools_list: list, tool_name: str):
-    """Get tool by name with caching for better performance"""
-    if tool_name not in _tool_cache:
-        for tool in tools_list:
-            if tool.name == tool_name:
-                _tool_cache[tool_name] = tool
-                break
-        else:
-            _tool_cache[tool_name] = None
-    return _tool_cache.get(tool_name)
 
 @tool
 def refund_verification_tool(order_id: str, customer_email: str = None) -> str:
@@ -91,7 +76,6 @@ def create_smolagents_system(models):
     
     if cache_manager:
         logger.info("Redis caching enabled for SmolAgents system")
-        # print("Redis caching enabled for all agents")
     
     # Create agents with optimized configuration
     refund_agent = ToolCallingAgent(
@@ -193,12 +177,10 @@ def process_with_smolagents(smolagents_system: Dict[str, Any], user_message: str
         
         if cache_manager and REDIS_CACHING_AVAILABLE:
             cache_key = cache_manager.create_cache_key(user_message_only or user_message, "manager_agent")
-            # print(f"Checking semantic cache with key: {cache_key[:80]}...")
             logger.info(f"Checking semantic cache with key: {cache_key[:80]}...")
             
-            cached_response = cache_manager.check_cache_and_store(cache_key, "manager_agent")
+            cached_response = cache_manager.check_cache_and_store(cache_key, "manager_agent", user_message=user_message_only or user_message)
             if cached_response:
-                # print("SEMANTIC CACHE HIT! Using cached response for similar query")
                 logger.info("Semantic cache hit - using cached response")
                 return cached_response
         
@@ -209,9 +191,8 @@ def process_with_smolagents(smolagents_system: Dict[str, Any], user_message: str
         
         # Store response in cache
         if cache_manager and REDIS_CACHING_AVAILABLE and cache_key:
-            print(f"Storing in semantic cache with key: {cache_key[:80]}...")
             logger.info(f"Storing in semantic cache with key: {cache_key[:80]}...")
-            cache_manager.check_cache_and_store(cache_key, "manager_agent", result)
+            cache_manager.check_cache_and_store(cache_key, "manager_agent", result, user_message=user_message_only or user_message)
         
         # Log performance metrics
         _log_performance_metrics(cache_manager, response_time)

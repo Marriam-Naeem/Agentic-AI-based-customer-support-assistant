@@ -18,16 +18,6 @@ class ChatbotInterface:
         self.session_id = str(uuid.uuid4())
         self.config = {"configurable": {"thread_id": self.session_id}}
         return "", []
-    
-    def _extract_response(self, result: dict) -> str:
-        if result.get("final_email"):
-            return result["final_email"]
-
-        if result.get("final_response"):
-            return result["final_response"] 
-
-        return "I've processed your request. Please let me know if you need any clarification."
-
 
 def create_chatbot_interface():
     chatbot = ChatbotInterface()
