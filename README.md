@@ -8,23 +8,38 @@ Customer support system that handles refunds, technical support, and general que
 - **Refund Processing**: Verifies orders and processes refunds automatically
 - **Document Search**: Finds answers in company documents using vector search
 - **Email Formatting**: Converts responses to professional customer service emails
-- **Web Interface**: Simple chat interface for testing
+- **Web Interface**: Simple chat interface for testing and interaction
+- **Redis Caching**: Efficient response caching for improved performance
 
 ## Project Structure
 
 ```
 customer-support-assistant/
 ├── data/
-│   ├── semantic_vector_store/  # Vector database
-│   ├── orders_database.json    # Customer orders
-│   └── processed_chunks.txt    # Document chunks
-├── documents/                   # Company documents
-├── frontend.py                  # Web interface
-├── graph.py                     # Workflow graph
-├── nodes.py                     # SmolAgents integration
-├── settings.py                  # Configuration
-├── rag_tools.py                # Document search tools
-└── refund_tools.py             # Refund tools
+│   ├── chroma_db/              # ChromaDB vector database
+│   ├── semantic_vector_store/  # Semantic vector storage
+│   ├── orders_database.json    # Customer orders database
+│   ├── processed_chunks.txt    # Document chunks for processing
+│   └── semantic_chunks.txt     # Semantic document chunks
+├── documents/                   # Company documents and policies
+│   ├── Account Management and Security Policy.pdf
+│   ├── Return and Refund Policy.pdf
+│   ├── Shipping and Delivery Policy.pdf
+│   ├── Technical Support And TroubleShooting.pdf
+│   ├── company_config_json.json
+│   └── support_tickets.csv
+├── frontend.py                  # Web interface using Gradio
+├── graph.py                     # Workflow graph definition
+├── nodes.py                     # SmolAgents integration nodes
+├── llm_setup.py                # Language model configuration
+├── rag_tools.py                # RAG (Retrieval-Augmented Generation) tools
+├── refund_tools.py             # Refund processing tools
+├── redis_cache_manager.py      # Redis caching implementation
+├── states.py                    # Application state management
+├── settings.py                  # Configuration settings
+├── requirements.txt             # Python dependencies
+├── pyproject.toml              # Project configuration
+└── uv.lock                     # UV dependency lock file
 ```
 
 ## Setup
@@ -41,10 +56,11 @@ customer-support-assistant/
    ```bash
    GEMINI_API_KEY=your_gemini_api_key
    HUGGINGFACE_TOKEN=your_token  # Optional for embeddings
+   REDIS_URL=redis://localhost:6379  # Optional for caching
    ```
 
 3. **Add company documents**
-   Place your company documents (PDF, CSV, JSON) in the `documents/` folder
+   Place your company documents (PDF, CSV, JSON) in the `documents/` folder. The system will automatically process and chunk them for search.
 
 4. **Run the application**
    ```bash
@@ -72,7 +88,9 @@ customer-support-assistant/
 
 - `refund_verification_tool`: Checks order eligibility
 - `refund_processing_tool`: Processes approved refunds
-- `document_search_tool`: Searches company documents
+- `document_search_tool`: Searches company documents using semantic similarity
+- `pdf_processing_tool`: Converts and chunks PDF documents
+- `cache_manager`: Manages Redis-based response caching
 
 ## Example Usage
 
@@ -96,8 +114,9 @@ customer-support-assistant/
 
 ## Configuration
 
-- `settings.py`: API keys, model settings, agent prompts
-- `documents/`: Add company documents here for search
-- `company_config_json.json`: Company policies and rules
+- `settings.py`: API keys, model settings, agent prompts, and system configuration
+- `documents/`: Add company documents here for automatic processing and search
+- `company_config_json.json`: Company policies, rules, and configuration
+- `llm_setup.py`: Language model configuration and setup
 
 Built with SmolAgents, LangGraph, and Groq AI.
