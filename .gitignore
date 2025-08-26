@@ -12,3 +12,5 @@ wheels/
 .env
 
 .gradio/
+
+simple_ollama_setup.py
