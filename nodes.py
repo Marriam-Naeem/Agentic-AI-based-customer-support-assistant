@@ -91,7 +91,7 @@ def create_smolagents_system(models):
     
     if cache_manager:
         logger.info("Redis caching enabled for SmolAgents system")
-        print("Redis caching enabled for all agents")
+        # print("Redis caching enabled for all agents")
     
     # Create agents with optimized configuration
     refund_agent = ToolCallingAgent(
